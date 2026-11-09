@@ -36,10 +36,7 @@ final class FeedStore {
 
     func articles(in selection: SidebarItem?, keeping keep: Article.ID? = nil) -> [Article] {
         let filtered: [Article] = switch selection {
-        case .unread:
-            // The kept (selected) article stays only while there is still something unread to move on to;
-            // otherwise the last article read would never leave the list.
-            articles.contains { !$0.isRead } ? articles.filter { !$0.isRead || $0.id == keep } : []
+        case .unread: articles.filter { !$0.isRead || $0.id == keep }
         case .starred: articles.filter(\.isStarred)
         case .feed(let id): articles.filter { $0.feedID == id }
         case .all, nil: articles
