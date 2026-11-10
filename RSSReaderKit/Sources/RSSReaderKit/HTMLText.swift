@@ -1,6 +1,6 @@
 import Foundation
 
-enum HTMLText {
+public enum HTMLText {
     private static let entities: [(String, String)] = [
         ("&nbsp;", " "), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"),
         ("&apos;", "'"), ("&#8217;", "\u{2019}"), ("&#8216;", "\u{2018}"), ("&#8220;", "\u{201C}"),
@@ -10,7 +10,7 @@ enum HTMLText {
     ]
 
     /// Strips tags and decodes common entities, for list snippets and titles.
-    static func plainText(_ html: String, limit: Int = 280) -> String {
+    public static func plainText(_ html: String, limit: Int = 280) -> String {
         var s = html
             .replacingOccurrences(of: "<(script|style)[\\s\\S]*?</\\1>", with: " ", options: [.regularExpression, .caseInsensitive])
             .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
@@ -22,7 +22,7 @@ enum HTMLText {
         return s.count > limit ? String(s.prefix(limit)) + "\u{2026}" : s
     }
 
-    static func escape(_ s: String) -> String {
+    public static func escape(_ s: String) -> String {
         s.replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")

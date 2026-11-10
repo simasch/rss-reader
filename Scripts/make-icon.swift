@@ -1,12 +1,14 @@
 #!/usr/bin/env swift
-// Renders the app icon with Core Graphics and packs it into Resources/AppIcon.icns.
+// Renders the app icon with Core Graphics into App/Assets.xcassets/AppIcon.appiconset:
+// rounded macOS icons at every size, plus a full-bleed, opaque variant for iOS (the system
+// applies the rounded mask there).
 // Usage: swift Scripts/make-icon.swift   (run from the repository root)
 import AppKit
 import Foundation
 
 let canvas: CGFloat = 1024
 
-func renderIcon(size: Int) -> Data {
+func renderIcon(size: Int, fullBleed: Bool = false) -> Data {
     let px = CGFloat(size)
     let rep = NSBitmapImageRep(
         bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
@@ -26,11 +28,22 @@ func renderIcon(size: Int) -> Data {
 
     // macOS icon grid: 824pt rounded square centred on a 1024pt canvas.
     let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
-    let tilePath = CGPath(roundedRect: tile, cornerWidth: 185, cornerHeight: 185, transform: nil)
+    let tilePath: CGPath
+    if fullBleed {
+        // iOS: scale the tile up to fill the canvas, square corners, no shadow.
+        cg.translateBy(x: 512, y: 512)
+        cg.scaleBy(x: canvas / tile.width, y: canvas / tile.height)
+        cg.translateBy(x: -512, y: -512)
+        tilePath = CGPath(rect: tile, transform: nil)
+    } else {
+        tilePath = CGPath(roundedRect: tile, cornerWidth: 185, cornerHeight: 185, transform: nil)
+    }
 
     // Drop shadow under the tile.
     cg.saveGState()
-    cg.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: color(0x000000, 0.35))
+    if !fullBleed {
+        cg.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: color(0x000000, 0.35))
+    }
     cg.addPath(tilePath)
     cg.setFillColor(color(0xF26B1D))
     cg.fillPath()
@@ -89,27 +102,45 @@ func renderIcon(size: Int) -> Data {
     cg.restoreGState()
 
     NSGraphicsContext.current = nil
+    if fullBleed { return opaquePNG(rep.cgImage!) }
     return rep.representation(using: .png, properties: [:])!
+}
+
+/// Re-encodes without an alpha channel, which App Store icons must not have.
+func opaquePNG(_ image: CGImage) -> Data {
+    let ctx = CGContext(
+        data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    let data = NSMutableData()
+    let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+    CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
+    CGImageDestinationFinalize(dest)
+    return data as Data
 }
 
 let fm = FileManager.default
 let root = URL(fileURLWithPath: fm.currentDirectoryPath)
-let resources = root.appendingPathComponent("Resources")
-let iconset = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("AppIcon.iconset")
-try? fm.removeItem(at: iconset)
+let iconset = root.appendingPathComponent("App/Assets.xcassets/AppIcon.appiconset")
 try fm.createDirectory(at: iconset, withIntermediateDirectories: true)
-try fm.createDirectory(at: resources, withIntermediateDirectories: true)
 
+var images: [[String: String]] = []
+
+// iOS/iPadOS: one opaque, full-bleed 1024px image; the system masks and scales it.
+try renderIcon(size: 1024, fullBleed: true).write(to: iconset.appendingPathComponent("AppIcon-iOS.png"))
+images.append(["filename": "AppIcon-iOS.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"])
+
+// macOS: the rounded tile with shadow, at every size the asset catalog expects.
 for base in [16, 32, 128, 256, 512] {
-    try renderIcon(size: base).write(to: iconset.appendingPathComponent("icon_\(base)x\(base).png"))
-    try renderIcon(size: base * 2).write(to: iconset.appendingPathComponent("icon_\(base)x\(base)@2x.png"))
+    for scale in [1, 2] {
+        let name = "AppIcon-mac-\(base)@\(scale)x.png"
+        try renderIcon(size: base * scale).write(to: iconset.appendingPathComponent(name))
+        images.append(["filename": name, "idiom": "mac", "scale": "\(scale)x", "size": "\(base)x\(base)"])
+    }
 }
-try renderIcon(size: 1024).write(to: resources.appendingPathComponent("AppIcon.png"))
 
-let iconutil = Process()
-iconutil.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
-iconutil.arguments = ["-c", "icns", iconset.path, "-o", resources.appendingPathComponent("AppIcon.icns").path]
-try iconutil.run()
-iconutil.waitUntilExit()
-guard iconutil.terminationStatus == 0 else { fatalError("iconutil failed") }
-print("Wrote Resources/AppIcon.icns and Resources/AppIcon.png")
+let contents: [String: Any] = ["images": images, "info": ["author": "xcode", "version": 1]]
+try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
+    .write(to: iconset.appendingPathComponent("Contents.json"))
+print("Wrote App/Assets.xcassets/AppIcon.appiconset")

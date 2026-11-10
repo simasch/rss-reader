@@ -1,8 +1,10 @@
+import RSSReaderKit
 import SwiftUI
 import WebKit
 
 struct ArticleDetailView: View {
     @Environment(FeedStore.self) private var store
+    @Environment(\.openURL) private var openURL
     let article: Article
 
     var body: some View {
@@ -10,6 +12,10 @@ struct ArticleDetailView: View {
             html: ArticleHTML.render(article, feedTitle: store.feed(withID: article.feedID)?.title),
             baseURL: article.link
         )
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .ignoresSafeArea(edges: .bottom)
+        #endif
         .toolbar {
             ToolbarItemGroup {
                 Button { store.toggleRead(article.id) } label: {
@@ -27,7 +33,10 @@ struct ArticleDetailView: View {
                 .help("Toggle Star (⇧⌘L)")
 
                 if let link = article.link {
-                    Button { NSWorkspace.shared.open(link) } label: {
+                    #if os(iOS)
+                    ShareLink(item: link)
+                    #endif
+                    Button { openURL(link) } label: {
                         Label("Open in Browser", systemImage: "safari")
                     }
                     .keyboardShortcut("b")
@@ -38,14 +47,28 @@ struct ArticleDetailView: View {
     }
 }
 
+#if os(macOS)
+private typealias ViewRepresentable = NSViewRepresentable
+#else
+private typealias ViewRepresentable = UIViewRepresentable
+#endif
+
 /// Renders article HTML with JavaScript disabled; clicked links open in the default browser.
-struct ArticleWebView: NSViewRepresentable {
+struct ArticleWebView: ViewRepresentable {
     let html: String
     let baseURL: URL?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> WKWebView {
+    #if os(macOS)
+    func makeNSView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateNSView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #else
+    func makeUIView(context: Context) -> WKWebView { makeWebView(context: context) }
+    func updateUIView(_ webView: WKWebView, context: Context) { update(webView, context: context) }
+    #endif
+
+    private func makeWebView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -53,7 +76,7 @@ struct ArticleWebView: NSViewRepresentable {
         return webView
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
+    private func update(_ webView: WKWebView, context: Context) {
         guard context.coordinator.loadedHTML != html else { return }
         context.coordinator.loadedHTML = html
         webView.loadHTMLString(html, baseURL: baseURL)
@@ -67,7 +90,11 @@ struct ArticleWebView: NSViewRepresentable {
             _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
             if navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url {
+                #if os(macOS)
                 NSWorkspace.shared.open(url)
+                #else
+                await UIApplication.shared.open(url)
+                #endif
                 return .cancel
             }
             return .allow
@@ -89,6 +116,7 @@ enum ArticleHTML {
         <!doctype html>
         <html><head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Content-Security-Policy" content="script-src 'none'">
         <style>\(css)</style>
         </head><body>
@@ -98,10 +126,17 @@ enum ArticleHTML {
         """
     }
 
+    #if os(macOS)
+    private static let fontSize = "15px"
+    #else
+    private static let fontSize = "17px"
+    #endif
+
     private static let css = """
     :root { color-scheme: light dark; }
-    body { font-family: -apple-system, sans-serif; font-size: 15px; line-height: 1.6;
-           max-width: 46em; margin: 2em auto; padding: 0 1.5em; }
+    body { font-family: -apple-system, sans-serif; font-size: \(fontSize); line-height: 1.6;
+           max-width: 46em; margin: 2em auto; padding: 0 1.25em; -webkit-text-size-adjust: 100%;
+           overflow-wrap: break-word; }
     h1 { font-size: 1.7em; line-height: 1.25; margin: .2em 0 1em; }
     h1 a { color: inherit; text-decoration: none; }
     .meta { color: gray; font-size: .9em; }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// OPML import/export. Folders are flattened on import.
-enum OPML {
+public enum OPML {
     struct Entry: Sendable {
         var title: String
         var url: URL
@@ -18,7 +18,7 @@ enum OPML {
         return delegate.entries
     }
 
-    static func export(_ feeds: [Feed]) -> String {
+    public static func export(_ feeds: [Feed]) -> String {
         let e = HTMLText.escape
         let outlines = feeds.map { feed in
             var line = "    <outline type=\"rss\" text=\"\(e(feed.title))\" title=\"\(e(feed.title))\" xmlUrl=\"\(e(feed.url.absoluteString))\""

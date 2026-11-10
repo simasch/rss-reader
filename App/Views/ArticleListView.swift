@@ -1,7 +1,9 @@
+import RSSReaderKit
 import SwiftUI
 
 struct ArticleListView: View {
     @Environment(FeedStore.self) private var store
+    @Environment(\.openURL) private var openURL
     let sidebarSelection: SidebarItem?
     @Binding var selectedArticleID: Article.ID?
 
@@ -27,7 +29,27 @@ struct ArticleListView: View {
                 List(articles, selection: $selectedArticleID) { article in
                     ArticleRow(article: article, feedTitle: store.feed(withID: article.feedID)?.title)
                         .contextMenu { contextMenu(for: article) }
+                        #if os(iOS)
+                        .swipeActions(edge: .leading) {
+                            Button { store.toggleRead(article.id) } label: {
+                                Label(article.isRead ? "Unread" : "Read",
+                                      systemImage: article.isRead ? "circle" : "checkmark.circle")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button { store.toggleStar(article.id) } label: {
+                                Label(article.isStarred ? "Unstar" : "Star",
+                                      systemImage: article.isStarred ? "star.slash" : "star")
+                            }
+                            .tint(.yellow)
+                        }
+                        #endif
                 }
+                #if os(iOS)
+                .listStyle(.plain)
+                .refreshable { await store.refreshAll() }
+                #endif
             }
         }
         .navigationTitle(title)
@@ -67,11 +89,8 @@ struct ArticleListView: View {
         Button(article.isStarred ? "Unstar" : "Star") { store.toggleStar(article.id) }
         if let link = article.link {
             Divider()
-            Button("Open in Browser") { NSWorkspace.shared.open(link) }
-            Button("Copy Link") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(link.absoluteString, forType: .string)
-            }
+            Button("Open in Browser") { openURL(link) }
+            Button("Copy Link") { Platform.copyToPasteboard(link.absoluteString) }
         }
     }
 }

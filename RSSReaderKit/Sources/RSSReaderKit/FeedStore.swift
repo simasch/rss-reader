@@ -1,14 +1,17 @@
-import AppKit
+import Foundation
 import Observation
+#if os(macOS)
+import AppKit
+#endif
 
 /// Holds all feeds and articles, persists them as JSON in Application Support, and refreshes feeds.
 @MainActor
 @Observable
-final class FeedStore {
-    private(set) var feeds: [Feed] = []
-    private(set) var articles: [Article] = []
-    private(set) var isRefreshing = false
-    var isAddingFeed = false
+public final class FeedStore {
+    public private(set) var feeds: [Feed] = []
+    public private(set) var articles: [Article] = []
+    public private(set) var isRefreshing = false
+    public var isAddingFeed = false
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var saveTask: Task<Void, Never>?
@@ -16,25 +19,28 @@ final class FeedStore {
     /// Read articles that dropped out of their feed are removed after this long (starred ones are kept).
     private static let retention: TimeInterval = 30 * 24 * 60 * 60
 
-    nonisolated static var defaultFileURL: URL {
+    public nonisolated static var defaultFileURL: URL {
         URL.applicationSupportDirectory
             .appending(path: "RSSReader", directoryHint: .isDirectory)
             .appending(path: "library.json")
     }
 
-    init(fileURL: URL = FeedStore.defaultFileURL) {
+    public init(fileURL: URL = FeedStore.defaultFileURL) {
         self.fileURL = fileURL
         load()
+        #if os(macOS)
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.save() }
         }
+        #endif
+        // On iOS the app saves when it moves to the background (see App/RSSReaderApp.swift).
     }
 
     // MARK: - Queries
 
-    func articles(in selection: SidebarItem?, keeping keep: Article.ID? = nil) -> [Article] {
+    public func articles(in selection: SidebarItem?, keeping keep: Article.ID? = nil) -> [Article] {
         let filtered: [Article] = switch selection {
         case .unread: articles.filter { !$0.isRead || $0.id == keep }
         case .starred: articles.filter(\.isStarred)
@@ -44,15 +50,15 @@ final class FeedStore {
         return filtered.sorted { $0.sortDate > $1.sortDate }
     }
 
-    func article(withID id: Article.ID) -> Article? {
+    public func article(withID id: Article.ID) -> Article? {
         articles.first { $0.id == id }
     }
 
-    func feed(withID id: UUID) -> Feed? {
+    public func feed(withID id: UUID) -> Feed? {
         feeds.first { $0.id == id }
     }
 
-    func unreadCountsByFeed() -> [UUID: Int] {
+    public func unreadCountsByFeed() -> [UUID: Int] {
         articles.reduce(into: [:]) { counts, article in
             if !article.isRead { counts[article.feedID, default: 0] += 1 }
         }
@@ -60,24 +66,24 @@ final class FeedStore {
 
     // MARK: - Article state
 
-    func setRead(_ read: Bool, articleID: Article.ID) {
+    public func setRead(_ read: Bool, articleID: Article.ID) {
         guard let i = articles.firstIndex(where: { $0.id == articleID }), articles[i].isRead != read else { return }
         articles[i].isRead = read
         scheduleSave()
     }
 
-    func toggleRead(_ articleID: Article.ID) {
+    public func toggleRead(_ articleID: Article.ID) {
         guard let article = article(withID: articleID) else { return }
         setRead(!article.isRead, articleID: articleID)
     }
 
-    func toggleStar(_ articleID: Article.ID) {
+    public func toggleStar(_ articleID: Article.ID) {
         guard let i = articles.firstIndex(where: { $0.id == articleID }) else { return }
         articles[i].isStarred.toggle()
         scheduleSave()
     }
 
-    func markAllRead(in selection: SidebarItem?) {
+    public func markAllRead(in selection: SidebarItem?) {
         let ids = Set(articles(in: selection).filter { !$0.isRead }.map(\.id))
         guard !ids.isEmpty else { return }
         for i in articles.indices where ids.contains(articles[i].id) {
@@ -88,7 +94,7 @@ final class FeedStore {
 
     // MARK: - Subscriptions
 
-    func addFeed(from input: String) async throws {
+    public func addFeed(from input: String) async throws {
         var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.lowercased().hasPrefix("feed:") {
             text = String(text.dropFirst(5))
@@ -114,14 +120,17 @@ final class FeedStore {
         save()
     }
 
-    func removeFeed(id: UUID) {
+    public func removeFeed(id: UUID) {
         feeds.removeAll { $0.id == id }
         articles.removeAll { $0.feedID == id }
         save()
     }
 
     @discardableResult
-    func importOPML(from url: URL) throws -> Int {
+    public func importOPML(from url: URL) throws -> Int {
+        // Files picked on iOS are security-scoped; the call is a no-op for ordinary URLs.
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let entries = try OPML.parse(Data(contentsOf: url))
         var added = 0
         for entry in entries where !feeds.contains(where: { $0.url == entry.url }) {
@@ -135,13 +144,13 @@ final class FeedStore {
         return added
     }
 
-    func exportOPML(to url: URL) throws {
+    public func exportOPML(to url: URL) throws {
         try OPML.export(feeds).write(to: url, atomically: true, encoding: .utf8)
     }
 
     // MARK: - Refresh
 
-    func refreshAll() async {
+    public func refreshAll() async {
         guard !isRefreshing, !feeds.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
@@ -244,7 +253,7 @@ final class FeedStore {
         }
     }
 
-    func save() {
+    public func save() {
         saveTask?.cancel()
         saveTask = nil
         do {

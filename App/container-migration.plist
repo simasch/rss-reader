@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- macOS only: on the first sandboxed launch, moves the library written by earlier,
+	     unsandboxed builds (~/Library/Application Support/RSSReader) into the app's container. -->
+	<key>Move</key>
+	<array>
+		<string>${ApplicationSupport}/RSSReader</string>
+	</array>
+</dict>
+</plist>

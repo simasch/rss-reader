@@ -1,3 +1,4 @@
+import RSSReaderKit
 import SwiftUI
 
 struct AddFeedSheet: View {
@@ -7,10 +8,13 @@ struct AddFeedSheet: View {
     @State private var errorMessage: String?
     @State private var isAdding = false
 
+    private let explanation = "Enter a feed URL, or a website address and the feed will be discovered."
+
     var body: some View {
+        #if os(macOS)
         VStack(alignment: .leading, spacing: 12) {
             Text("Add Feed").font(.headline)
-            Text("Enter a feed URL, or a website address and the feed will be discovered.")
+            Text(explanation)
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -33,15 +37,56 @@ struct AddFeedSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Add", action: add)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(isAdding || urlString.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(!canAdd)
             }
         }
         .padding(20)
         .onAppear(perform: prefillFromPasteboard)
+        #else
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("URL", text: $urlString, prompt: Text("https://example.com"))
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .disabled(isAdding)
+                        .onSubmit(add)
+                } footer: {
+                    Text(explanation)
+                }
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Add Feed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isAdding {
+                        ProgressView()
+                    } else {
+                        Button("Add", action: add).disabled(!canAdd)
+                    }
+                }
+            }
+        }
+        #endif
+    }
+
+    private var canAdd: Bool {
+        !isAdding && !urlString.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func add() {
-        guard !isAdding else { return }
+        guard canAdd else { return }
         isAdding = true
         errorMessage = nil
         Task {
@@ -55,6 +100,8 @@ struct AddFeedSheet: View {
         }
     }
 
+    #if os(macOS)
+    // Not done on iOS: reading the pasteboard there shows a "paste from…" privacy prompt.
     private func prefillFromPasteboard() {
         guard let string = NSPasteboard.general.string(forType: .string)?
             .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -62,4 +109,5 @@ struct AddFeedSheet: View {
             !string.contains(" ") else { return }
         urlString = string
     }
+    #endif
 }
