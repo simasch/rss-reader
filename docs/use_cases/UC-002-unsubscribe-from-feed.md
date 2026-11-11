@@ -7,7 +7,7 @@
 **Primary Actor:** Reader  
 **Goal:** Remove a feed the Reader no longer wants to follow, together with its articles  
 **Trigger:** The Reader chooses to unsubscribe from a feed in the subscription list  
-**Status:** Draft  
+**Status:** Approved  
 
 ## Preconditions
 
@@ -28,7 +28,8 @@
 **Flow:**
 
 1. System displays the Unread list instead.
-2. Use case continues at step 3.
+2. When one of the feed's articles was displayed in the article view, System displays that no article is selected.
+3. Use case continues at step 3.
 
 ### A2: Article of the Removed Feed Was Displayed in Another List
 
@@ -45,7 +46,7 @@
 **Flow:**
 
 1. System puts the feed and its articles back into the library (BR-002).
-2. System updates the subscription list and the unread counts.
+2. System updates the subscription list, the unread counts, and the displayed article list (BR-002).
 3. System displays a message that the feed could not be unsubscribed.
 4. Use case ends.
 
@@ -69,4 +70,4 @@ Unsubscribing removes every article of the feed, including read and starred ones
 
 ### BR-002: Only Saved Unsubscribes Take Effect
 
-A feed whose removal cannot be saved stays subscribed: it and its articles are put back with their read and starred states.
+A feed whose removal cannot be saved stays subscribed: it and its articles are put back with their read and starred states. The display does not return to its earlier state: the list displayed now stays selected and shows the restored articles by its own rules (UC-004 BR-001), so read articles that were kept in Unread before (UC-004 BR-004) do not reappear there, and an article view cleared by the removal stays cleared.

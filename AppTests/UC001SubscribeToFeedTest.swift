@@ -74,6 +74,7 @@ struct UC001SubscribeToFeedTest {
         Pasteboard.set(nil)
         defer { Pasteboard.restore(saved) }
 
+        #if os(macOS)
         try await ViewHosting.host(ContentView().environment(store).frame(width: 900, height: 600)) {
             #expect(AppWindow.sheetTexts() == nil)
 
@@ -85,6 +86,27 @@ struct UC001SubscribeToFeedTest {
             store.isAddingFeed = false
             try await AppWindow.waitForNoSheet()
         }
+        #else
+        // ViewHosting's window on iOS belongs to no window scene: UIKit presents a sheet there but never dismisses
+        // it, so the window cannot show the sheet closing. The main window's sheet is inspected on the view instead.
+        let view = ContentView()
+        try await ViewHosting.host(view.environment(store).frame(width: 900, height: 600)) {
+            try await view.inspection.inspect { view in
+                #expect(throws: (any Error).self) { try view.find(ViewType.Sheet.self) }
+            }
+
+            store.isAddingFeed = true
+            try await view.inspection.inspect { view in
+                // The sheet shows the add-feed form; what the form shows is checked by the tests that inspect it.
+                _ = try view.find(ViewType.Sheet.self).view(AddFeedSheet.self)
+            }
+
+            store.isAddingFeed = false
+            try await view.inspection.inspect { view in
+                #expect(throws: (any Error).self) { try view.find(ViewType.Sheet.self) }
+            }
+        }
+        #endif
     }
 
     // MARK: - A1 Address prefilled from clipboard
@@ -741,6 +763,7 @@ private func withForm(
     }
 }
 
+#if os(macOS)
 /// Looks at the window the view is hosted in to see which sheet it presents. SwiftUI exposes no controls or
 /// accessibility elements in a test process, so the sheet's content is identified by the SwiftUI view type its
 /// hosting view or controller holds.
@@ -754,20 +777,9 @@ private enum AppWindow {
         return description.split(separator: "\n").map(String.init)
     }
 
-    #if os(macOS)
     private static func presentedSheet() -> Any? {
         NSApplication.shared.windows.lazy.compactMap(\.attachedSheet).first?.contentView
     }
-    #else
-    private static func presentedSheet() -> Any? {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .lazy
-            .compactMap { $0.rootViewController?.presentedViewController }
-            .first { !$0.isBeingDismissed }
-    }
-    #endif
 
     static func waitForSheet() async throws -> [String] {
         let deadline = ContinuousClock.now + .seconds(5)
@@ -788,6 +800,8 @@ private enum AppWindow {
         Issue.record("The sheet did not close")
     }
 }
+
+#endif
 
 /// Saves and restores the general pasteboard around a test, since A1 reads it on the Mac when the form opens.
 @MainActor

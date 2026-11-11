@@ -150,10 +150,22 @@ public final class FeedStore {
         }
     }
 
-    public func removeFeed(id: UUID) {
+    /// Removes a feed with its articles and saves the library; restores both when the save fails.
+    public func removeFeed(id: UUID) throws {
+        let previousFeeds = feeds
+        let previousArticles = articles
         feeds.removeAll { $0.id == id }
+        // UC-002 BR-001: every article leaves with its feed, read and starred ones included.
         articles.removeAll { $0.feedID == id }
-        save()
+        do {
+            try persist()
+        } catch {
+            // UC-002 BR-002: an unsubscribe that cannot be saved is undone, states included.
+            feeds = previousFeeds
+            articles = previousArticles
+            print("Failed to save library: \(error)")
+            throw FeedError.unsubscribeFailed
+        }
     }
 
     @discardableResult

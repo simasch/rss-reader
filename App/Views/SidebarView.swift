@@ -5,6 +5,9 @@ struct SidebarView: View {
     @Environment(FeedStore.self) private var store
     @Environment(\.openURL) private var openURL
     @Binding var selection: SidebarItem?
+    /// Called before a feed is removed, so the article view can let go of the feed's articles.
+    var willUnsubscribe: (UUID) -> Void = { _ in }
+    @State private var unsubscribeError: String?
     internal let inspection = Inspection<Self>() // UI test hook (ViewInspector)
 
     var body: some View {
@@ -56,6 +59,13 @@ struct SidebarView: View {
             #endif
         }
         .onReceive(inspection.notice) { inspection.visit(self, $0) }
+        .alert("Unsubscribe Failed", isPresented: Binding { unsubscribeError != nil } set: {
+            if !$0 { unsubscribeError = nil }
+        }) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(unsubscribeError ?? "")
+        }
         #if os(iOS)
         .refreshable { await store.refreshAll() }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [Platform.opmlType, .xml]) { result in
@@ -96,9 +106,19 @@ struct SidebarView: View {
         }
         Button("Copy Feed URL") { Platform.copyToPasteboard(feed.url.absoluteString) }
         Divider()
-        Button("Unsubscribe", role: .destructive) {
-            if selection == .feed(feed.id) { selection = .unread }
-            store.removeFeed(id: feed.id)
+        // UC-002 BR-001: unsubscribing is not confirmed beforehand.
+        Button("Unsubscribe", role: .destructive) { unsubscribe(feed) }
+    }
+
+    private func unsubscribe(_ feed: Feed) {
+        // UC-002 A1: the removed feed's list gives way to Unread.
+        if selection == .feed(feed.id) { selection = .unread }
+        willUnsubscribe(feed.id)
+        do {
+            try store.removeFeed(id: feed.id)
+        } catch {
+            // UC-002 BR-002: the feed stays subscribed; the display keeps its new state.
+            unsubscribeError = error.localizedDescription
         }
     }
 }
