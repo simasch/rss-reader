@@ -7,7 +7,7 @@
 **Primary Actor:** Reader  
 **Goal:** Remove a feed the Reader no longer wants to follow, together with its articles  
 **Trigger:** The Reader chooses to unsubscribe from a feed in the subscription list  
-**Status:** Approved  
+**Status:** Done  
 
 ## Preconditions
 
