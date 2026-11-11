@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		B00000000000000000000001 /* RSSReaderKit in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000002 /* RSSReaderKit */; };
+		C00000000000000000000001 /* RSSReaderKit in Frameworks */ = {isa = PBXBuildFile; productRef = C00000000000000000000002 /* RSSReaderKit */; };
+		C00000000000000000000003 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = C00000000000000000000004 /* ViewInspector */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* RSS Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RSS Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* RSSReaderKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RSSReaderKit; sourceTree = "<group>"; };
+		C10000000000000000000001 /* RSSReaderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RSSReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -22,16 +25,40 @@
 				Info.plist,
 			);
 			platformFiltersByRelativePath = {
-				"container-migration.plist" = (
-					macos,
-				);
+				"container-migration.plist" = (macos, );
 			};
 			target = A50000000000000000000001 /* RSSReader */;
+		};
+		C20000000000000000000002 /* Exceptions for "App" folder in "RSSReaderTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Inspection.swift,
+				Platform.swift,
+				Views/AddFeedSheet.swift,
+				Views/ArticleDetailView.swift,
+				Views/ArticleListView.swift,
+				Views/ContentView.swift,
+				Views/SidebarView.swift,
+			);
+			target = C50000000000000000000001 /* RSSReaderTests */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A20000000000000000000001 /* App */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A20000000000000000000002 /* Exceptions for "App" folder in "RSSReader" target */, ); path = App; sourceTree = "<group>"; };
+		A20000000000000000000001 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A20000000000000000000002 /* Exceptions for "App" folder in "RSSReader" target */,
+				C20000000000000000000002 /* Exceptions for "App" folder in "RSSReaderTests" target */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C20000000000000000000001 /* AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AppTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +70,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000001 /* RSSReaderKit in Frameworks */,
+				C00000000000000000000003 /* ViewInspector in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -50,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* App */,
+				C20000000000000000000001 /* AppTests */,
 				A10000000000000000000002 /* RSSReaderKit */,
 				A40000000000000000000002 /* Products */,
 			);
@@ -59,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000001 /* RSS Reader.app */,
+				C10000000000000000000001 /* RSSReaderTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,6 +127,30 @@
 			productReference = A10000000000000000000001 /* RSS Reader.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C50000000000000000000001 /* RSSReaderTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C80000000000000000000001 /* Build configuration list for PBXNativeTarget "RSSReaderTests" */;
+			buildPhases = (
+				C60000000000000000000001 /* Sources */,
+				C30000000000000000000001 /* Frameworks */,
+				C60000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C20000000000000000000001 /* AppTests */,
+			);
+			name = RSSReaderTests;
+			packageProductDependencies = (
+				C00000000000000000000002 /* RSSReaderKit */,
+				C00000000000000000000004 /* ViewInspector */,
+			);
+			productName = RSSReaderTests;
+			productReference = C10000000000000000000001 /* RSSReaderTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -100,6 +162,9 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					C50000000000000000000001 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -115,6 +180,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B00000000000000000000003 /* XCLocalSwiftPackageReference "RSSReaderKit" */,
+				C70000000000000000000001 /* XCRemoteSwiftPackageReference "ViewInspector" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A40000000000000000000002 /* Products */;
@@ -122,6 +188,7 @@
 			projectRoot = "";
 			targets = (
 				A50000000000000000000001 /* RSSReader */,
+				C50000000000000000000001 /* RSSReaderTests */,
 			);
 		};
 /* End PBXProject section */
@@ -134,10 +201,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C60000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C60000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -284,6 +365,48 @@
 			};
 			name = Release;
 		};
+		C90000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = local.rssreader.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		C90000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = local.rssreader.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -305,6 +428,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C80000000000000000000001 /* Build configuration list for PBXNativeTarget "RSSReaderTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C90000000000000000000001 /* Debug */,
+				C90000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -314,10 +446,30 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		C70000000000000000000001 /* XCRemoteSwiftPackageReference "ViewInspector" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nalexn/ViewInspector";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.10.5;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		B00000000000000000000002 /* RSSReaderKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RSSReaderKit;
+		};
+		C00000000000000000000002 /* RSSReaderKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RSSReaderKit;
+		};
+		C00000000000000000000004 /* ViewInspector */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C70000000000000000000001 /* XCRemoteSwiftPackageReference "ViewInspector" */;
+			productName = ViewInspector;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

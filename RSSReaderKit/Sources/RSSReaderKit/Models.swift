@@ -44,6 +44,7 @@ public enum FeedError: LocalizedError {
     case notAFeed
     case noFeedFound
     case alreadySubscribed
+    case saveFailed
     case badResponse
     case http(Int)
     case parse(String)
@@ -54,6 +55,7 @@ public enum FeedError: LocalizedError {
         case .notAFeed: "The document is not an RSS or Atom feed."
         case .noFeedFound: "No feed was found at that address."
         case .alreadySubscribed: "You are already subscribed to this feed."
+        case .saveFailed: "The feed could not be saved. Please try again."
         case .badResponse: "The server returned an unexpected response."
         case .http(let code): "The server responded with HTTP \(code)."
         case .parse(let message): "The feed could not be parsed: \(message)"

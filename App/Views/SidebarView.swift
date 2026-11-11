@@ -5,6 +5,7 @@ struct SidebarView: View {
     @Environment(FeedStore.self) private var store
     @Environment(\.openURL) private var openURL
     @Binding var selection: SidebarItem?
+    internal let inspection = Inspection<Self>() // UI test hook (ViewInspector)
 
     var body: some View {
         let counts = store.unreadCountsByFeed()
@@ -54,6 +55,7 @@ struct SidebarView: View {
             }
             #endif
         }
+        .onReceive(inspection.notice) { inspection.visit(self, $0) }
         #if os(iOS)
         .refreshable { await store.refreshAll() }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [Platform.opmlType, .xml]) { result in

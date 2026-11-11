@@ -7,6 +7,8 @@ struct AddFeedSheet: View {
     @State private var urlString = ""
     @State private var errorMessage: String?
     @State private var isAdding = false
+    @State private var addTask: Task<Void, Never>?
+    internal let inspection = Inspection<Self>() // UI test hook (ViewInspector)
 
     private let explanation = "Enter a feed URL, or a website address and the feed will be discovered."
 
@@ -33,7 +35,7 @@ struct AddFeedSheet: View {
             HStack {
                 if isAdding { ProgressView().controlSize(.small) }
                 Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel, action: cancel)
                     .keyboardShortcut(.cancelAction)
                 Button("Add", action: add)
                     .keyboardShortcut(.defaultAction)
@@ -42,6 +44,8 @@ struct AddFeedSheet: View {
         }
         .padding(20)
         .onAppear(perform: prefillFromPasteboard)
+        .onDisappear { addTask?.cancel() }
+        .onReceive(inspection.notice) { inspection.visit(self, $0) }
         #else
         NavigationStack {
             Form {
@@ -67,7 +71,7 @@ struct AddFeedSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
+                    Button("Cancel", role: .cancel, action: cancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isAdding {
@@ -77,10 +81,13 @@ struct AddFeedSheet: View {
                     }
                 }
             }
+            .onDisappear { addTask?.cancel() }
+            .onReceive(inspection.notice) { inspection.visit(self, $0) }
         }
         #endif
     }
 
+    // UC-001 BR-010: the form can be confirmed only when the address holds more than spaces.
     private var canAdd: Bool {
         !isAdding && !urlString.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -89,15 +96,26 @@ struct AddFeedSheet: View {
         guard canAdd else { return }
         isAdding = true
         errorMessage = nil
-        Task {
+        addTask = Task {
             do {
                 try await store.addFeed(from: urlString)
                 dismiss()
+            } catch is CancellationError {
+                // UC-001 A7: the Reader cancelled; the form is already closing.
+            } catch let error as URLError where error.code == .cancelled {
+                // UC-001 A7: the retrieval was abandoned.
             } catch {
                 errorMessage = error.localizedDescription
             }
             isAdding = false
+            addTask = nil
         }
+    }
+
+    /// UC-001 A7, BR-009: cancelling abandons a running retrieval so no feed is added.
+    private func cancel() {
+        addTask?.cancel()
+        dismiss()
     }
 
     #if os(macOS)

@@ -9,7 +9,8 @@ public enum HTMLText {
         ("&amp;", "&"), // must come last
     ]
 
-    /// Strips tags and decodes common entities, for list snippets and titles.
+    /// Strips tags and decodes common entities, for list snippets and titles. The result has at most
+    /// `limit` characters; a shortened text ends in "…" (OQ-001).
     public static func plainText(_ html: String, limit: Int = 280) -> String {
         var s = html
             .replacingOccurrences(of: "<(script|style)[\\s\\S]*?</\\1>", with: " ", options: [.regularExpression, .caseInsensitive])
@@ -19,7 +20,8 @@ public enum HTMLText {
         }
         s = s.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return s.count > limit ? String(s.prefix(limit)) + "\u{2026}" : s
+        guard s.count > limit else { return s }
+        return String(s.prefix(max(limit - 1, 0))).trimmingCharacters(in: .whitespaces) + "\u{2026}"
     }
 
     public static func escape(_ s: String) -> String {

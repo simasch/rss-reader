@@ -25,11 +25,16 @@ enum FeedFetcher {
     }
 
     /// Accepts a feed URL or a website URL. For websites, follows `<link rel="alternate">` to the feed.
+    // UC-001 BR-003: one discovery step; an advertised address that is no feed is not searched further.
     static func discover(_ url: URL) async throws -> (url: URL, feed: ParsedFeed) {
         let (data, response) = try await get(url)
         let base = response.url ?? url
-        if let parsed = try? FeedParser.parse(data, baseURL: base) {
-            return (base, parsed)
+        // Only a document that is no feed at all is searched for advertised feeds (A3); a damaged feed
+        // reports its own problem (A5).
+        do {
+            return (base, try FeedParser.parse(data, baseURL: base))
+        } catch FeedError.notAFeed {
+            // A web page: continue with discovery below.
         }
         let html = String(decoding: data, as: UTF8.self)
         guard let feedURL = feedLinks(inHTML: html, baseURL: base).first else {
@@ -48,26 +53,30 @@ enum FeedFetcher {
         return linkTag.matches(in: html, range: range).compactMap { match in
             guard let r = Range(match.range, in: html) else { return nil }
             let tag = String(html[r])
-            let lower = tag.lowercased()
-            guard lower.contains("alternate"),
-                  lower.contains("application/rss+xml") || lower.contains("application/atom+xml"),
+            // UC-001 BR-003: only links advertised as an alternate RSS or Atom version count.
+            let rels = (attribute("rel", in: tag) ?? "").lowercased().split(whereSeparator: \.isWhitespace)
+            let type = (attribute("type", in: tag) ?? "").lowercased().trimmingCharacters(in: .whitespaces)
+            guard rels.contains("alternate"),
+                  ["application/rss+xml", "application/atom+xml"].contains(type),
                   let href = attribute("href", in: tag) else { return nil }
             return URL(string: href, relativeTo: baseURL)?.absoluteURL
         }
     }
 
     private static func attribute(_ name: String, in tag: String) -> String? {
+        // Quoted or unquoted value; the name must stand alone (`rel`, not `data-rel`).
         guard let regex = try? NSRegularExpression(
-            pattern: "\\b\(name)\\s*=\\s*([\"'])(.*?)\\1", options: .caseInsensitive
+            pattern: "\\s\(name)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'>]+))", options: .caseInsensitive
         ),
             let match = regex.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
-            let r = Range(match.range(at: 2), in: tag) else { return nil }
+            let r = (1...3).lazy.compactMap({ Range(match.range(at: $0), in: tag) }).first else { return nil }
         return String(tag[r]).replacingOccurrences(of: "&amp;", with: "&")
     }
 
     private static func get(
         _ url: URL, etag: String? = nil, lastModified: String? = nil
     ) async throws -> (Data, HTTPURLResponse) {
+        // UC-001 BR-007, UC-003 BR-010: a Feed Publisher silent for 30 seconds counts as unreachable.
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue(

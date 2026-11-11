@@ -127,7 +127,8 @@ private let base = URL(string: "https://example.com/feed.xml")!
     @Test func plainTextStripsTagsAndEntities() {
         #expect(HTMLText.plainText("<p>Fish &amp; chips</p>\n<script>evil()</script><b>tonight</b>") == "Fish & chips tonight")
         #expect(HTMLText.plainText("&amp;lt;b&amp;gt;") == "&lt;b&gt;")
-        #expect(HTMLText.plainText("abcdef", limit: 3) == "abc\u{2026}")
+        // UC-001 BR-004 (OQ-001): a shortened text, ellipsis included, stays within the limit.
+        #expect(HTMLText.plainText("abcdef", limit: 3) == "ab\u{2026}")
     }
 
     @Test func opmlRoundTrip() throws {

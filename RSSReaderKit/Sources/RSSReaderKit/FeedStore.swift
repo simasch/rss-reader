@@ -97,19 +97,38 @@ public final class FeedStore {
     // MARK: - Subscriptions
 
     public func addFeed(from input: String) async throws {
+        let url = try Self.normalizedAddress(input)
+        // UC-001 BR-003: a website address is followed to the first feed it advertises.
+        let (feedURL, parsed) = try await FeedFetcher.discover(url)
+        // UC-001 BR-009: a cancelled subscription adds nothing, even if the retrieval finished.
+        try Task.checkCancellation()
+        try subscribe(to: feedURL, parsed: parsed)
+    }
+
+    // UC-001 BR-001: trim, unwrap feed:, default to https://, accept only http(s) with a host.
+    nonisolated static func normalizedAddress(_ input: String) throws -> URL {
         var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.lowercased().hasPrefix("feed:") {
             text = String(text.dropFirst(5))
             if text.hasPrefix("//") { text = "https:" + text }
         }
-        if !text.contains("://") { text = "https://" + text }
+        // A leading "name:" is a scheme (mailto:, ftp://) unless a port number follows it (example.com:8080).
+        let hasScheme = text.range(of: "^[A-Za-z][A-Za-z0-9+.-]*:(//|[^0-9])", options: .regularExpression) != nil
+        if !hasScheme {
+            text = "https://" + text
+        }
         guard let url = URL(string: text),
               let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme),
-              url.host() != nil else { throw FeedError.invalidURL }
+              let host = url.host(), !host.isEmpty else { throw FeedError.invalidURL }
+        return url
+    }
 
-        let (feedURL, parsed) = try await FeedFetcher.discover(url)
+    /// Adds a retrieved feed and saves the library; undoes the addition when the save fails.
+    func subscribe(to feedURL: URL, parsed: ParsedFeed) throws {
+        // UC-001 BR-002: a feed is subscribed only once, compared by its final feed address.
         guard !feeds.contains(where: { $0.url == feedURL }) else { throw FeedError.alreadySubscribed }
 
+        // UC-001 BR-004: the feed's own title as plain text, at most 200 characters, else the host name.
         let parsedTitle = parsed.title.map { HTMLText.plainText($0, limit: 200) } ?? ""
         let feed = Feed(
             title: parsedTitle.isEmpty ? (feedURL.host() ?? feedURL.absoluteString) : parsedTitle,
@@ -118,8 +137,17 @@ public final class FeedStore {
         )
         feeds.append(feed)
         sortFeeds()
+        // UC-001 BR-006: the first articles follow the refresh rules; new articles are unread, not starred.
         merge(parsed.items, into: feed.id)
-        save()
+        do {
+            try persist()
+        } catch {
+            // UC-001 BR-008: a subscription that cannot be saved is not added.
+            feeds.removeAll { $0.id == feed.id }
+            articles.removeAll { $0.feedID == feed.id }
+            print("Failed to save library: \(error)")
+            throw FeedError.saveFailed
+        }
     }
 
     public func removeFeed(id: UUID) {
@@ -203,11 +231,14 @@ public final class FeedStore {
         let now = Date.now
 
         for item in items {
+            // UC-003 BR-004: identified by guid, else link, else title; skipped without any, taken once.
             guard let key = item.guid ?? item.link?.absoluteString ?? item.title else { continue }
             let id = "\(feedID.uuidString)|\(key)"
             guard seen.insert(id).inserted else { continue }
 
+            // UC-003 BR-006: content is the full content, else the summary; snippet prefers the summary.
             let html = item.content ?? item.summary ?? ""
+            // UC-003 BR-005: plain-text title of at most 500 characters, "(Untitled)" when missing.
             let title = item.title.map { HTMLText.plainText($0, limit: 500) }.flatMap { $0.isEmpty ? nil : $0 }
                 ?? "(Untitled)"
             let snippet = HTMLText.plainText(item.summary ?? html)
@@ -230,6 +261,7 @@ public final class FeedStore {
         return seen
     }
 
+    // UC-001 BR-005: subscriptions are listed alphabetically by title, ignoring case.
     private func sortFeeds() {
         feeds.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
@@ -256,17 +288,22 @@ public final class FeedStore {
     }
 
     public func save() {
-        saveTask?.cancel()
-        saveTask = nil
         do {
-            try FileManager.default.createDirectory(
-                at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true
-            )
-            let data = try JSONEncoder().encode(Library(feeds: feeds, articles: articles))
-            try data.write(to: fileURL, options: .atomic)
+            try persist()
         } catch {
             print("Failed to save library: \(error)")
         }
+    }
+
+    /// Writes the library and reports a failure, for callers that must undo their change.
+    private func persist() throws {
+        saveTask?.cancel()
+        saveTask = nil
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        let data = try JSONEncoder().encode(Library(feeds: feeds, articles: articles))
+        try data.write(to: fileURL, options: .atomic)
     }
 
     /// Coalesces frequent changes (e.g. marking articles read while browsing) into one write.

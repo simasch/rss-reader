@@ -1,0 +1,30 @@
+@startuml Use Cases Overview
+left to right direction
+
+actor "Reader" as reader
+actor "Scheduler" as scheduler
+actor "Feed Publisher" as publisher
+
+rectangle "RSS Reader" {
+    usecase "UC-001\nSubscribe to Feed" as UC001
+    usecase "UC-002\nUnsubscribe from Feed" as UC002
+    usecase "UC-003\nRefresh Feeds" as UC003
+    usecase "UC-004\nRead Articles" as UC004
+    usecase "UC-005\nTrack Read and Starred Articles" as UC005
+    usecase "UC-006\nImport Subscriptions" as UC006
+    usecase "UC-007\nExport Subscriptions" as UC007
+}
+
+reader --> UC001
+reader --> UC002
+reader --> UC003
+reader --> UC004
+reader --> UC005
+reader --> UC006
+reader --> UC007
+scheduler --> UC003
+
+UC001 --> publisher
+UC003 --> publisher
+
+@enduml
