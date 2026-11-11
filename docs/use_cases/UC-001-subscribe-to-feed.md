@@ -8,7 +8,7 @@
 **Secondary Actors:** Feed Publisher  
 **Goal:** Add a news feed to the library by entering its address or the address of its website, so its articles appear in the reader  
 **Trigger:** The Reader chooses to add a feed  
-**Status:** Implemented  
+**Status:** Done  
 
 ## Preconditions
 
