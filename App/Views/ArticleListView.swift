@@ -6,10 +6,11 @@ struct ArticleListView: View {
     @Environment(\.openURL) private var openURL
     let sidebarSelection: SidebarItem?
     @Binding var selectedArticleID: Article.ID?
+    let keptArticleIDs: Set<Article.ID>
 
     var body: some View {
-        // Keep the selected article visible in "Unread" even after it has been marked read.
-        let articles = store.articles(in: sidebarSelection, keeping: selectedArticleID)
+        // Keep articles read in this visit visible in "Unread", so ↑/↓ can go back to them.
+        let articles = store.articles(in: sidebarSelection, keeping: keptArticleIDs)
         Group {
             if store.feeds.isEmpty {
                 ContentUnavailableView {
@@ -49,6 +50,10 @@ struct ArticleListView: View {
                 #if os(iOS)
                 .listStyle(.plain)
                 .refreshable { await store.refreshAll() }
+                // macOS lists move the selection with the arrow keys natively; on iPadOS they only
+                // move the focus highlight, so step through the articles explicitly.
+                .onKeyPress(.downArrow) { moveSelection(by: 1, in: articles) }
+                .onKeyPress(.upArrow) { moveSelection(by: -1, in: articles) }
                 #endif
             }
         }
@@ -81,6 +86,14 @@ struct ArticleListView: View {
         case .all, nil: "All Articles"
         case .feed(let id): store.feed(withID: id)?.title ?? "Feed"
         }
+    }
+
+    private func moveSelection(by offset: Int, in articles: [Article]) -> KeyPress.Result {
+        guard !articles.isEmpty else { return .ignored }
+        let current = selectedArticleID.flatMap { id in articles.firstIndex { $0.id == id } }
+        let next = current.map { min(max($0 + offset, 0), articles.count - 1) } ?? (offset > 0 ? 0 : articles.count - 1)
+        selectedArticleID = articles[next].id
+        return .handled
     }
 
     @ViewBuilder

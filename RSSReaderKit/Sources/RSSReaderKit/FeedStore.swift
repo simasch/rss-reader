@@ -40,9 +40,11 @@ public final class FeedStore {
 
     // MARK: - Queries
 
-    public func articles(in selection: SidebarItem?, keeping keep: Article.ID? = nil) -> [Article] {
+    /// The articles shown for a sidebar item, newest first. `keep` lists read articles that stay in
+    /// "Unread" anyway, so the list does not shift under the user while they move through it.
+    public func articles(in selection: SidebarItem?, keeping keep: Set<Article.ID> = []) -> [Article] {
         let filtered: [Article] = switch selection {
-        case .unread: articles.filter { !$0.isRead || $0.id == keep }
+        case .unread: articles.filter { !$0.isRead || keep.contains($0.id) }
         case .starred: articles.filter(\.isStarred)
         case .feed(let id): articles.filter { $0.feedID == id }
         case .all, nil: articles

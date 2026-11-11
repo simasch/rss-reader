@@ -51,6 +51,7 @@ The app icons in `App/Assets.xcassets` (rounded macOS sizes and a full-bleed iOS
 
 | Shortcut | Action |
 |---|---|
+| ↑ / ↓ | Previous / next article (when the article list has focus) |
 | ⌘N | Add feed |
 | ⌘R | Refresh all |
 | ⌘K | Mark all in current list as read |
