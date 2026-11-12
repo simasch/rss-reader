@@ -32,12 +32,14 @@
 		C20000000000000000000002 /* Exceptions for "App" folder in "RSSReaderTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				FeedCommands.swift,
 				Inspection.swift,
 				Platform.swift,
 				Views/AddFeedSheet.swift,
 				Views/ArticleDetailView.swift,
 				Views/ArticleListView.swift,
 				Views/ContentView.swift,
+				Views/RefreshSchedule.swift,
 				Views/SidebarView.swift,
 			);
 			target = C50000000000000000000001 /* RSSReaderTests */;

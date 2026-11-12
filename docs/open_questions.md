@@ -26,7 +26,7 @@ Applies to every "shortened to N characters" rule.
 **Element:** UC-003 BR-001
 **Raised by:** /use-case-spec, 2026-11-11
 **Blocking:** No
-**Status:** Open
+**Status:** Resolved
 
 BR-001 said the interval "pauses" in the background on iPhone and iPad, without saying whether the app refreshes,
 resumes the remaining time, or restarts the interval when it returns to the foreground.
@@ -34,14 +34,40 @@ resumes the remaining time, or restarts the interval when it returns to the fore
 **Assumed:** No refresh runs in the background; when the interval elapsed in the meantime, the refresh follows as
 soon as the app returns to the foreground.
 
+**Answer:** Confirmed, as assumed.
+**Answered by:** Simon Martinelli, 2026-11-11
+**Resolved in:** UC-003 BR-001
+
 ## OQ-003: Does a refresh update the feed title?
 
 **Element:** UC-003 BR-013
 **Raised by:** /use-case-spec, 2026-11-11
 **Blocking:** No
-**Status:** Open
+**Status:** Resolved
 
 The refresh records the feed's version and website, but the specification did not say whether the feed's own title
 replaces the title given at subscription or import.
 
 **Assumed:** A refresh keeps the feed title given at subscription (UC-001 BR-004) or import (UC-006 BR-003).
+
+**Answer:** Confirmed, as assumed.
+**Answered by:** Simon Martinelli, 2026-11-11
+**Resolved in:** UC-003 BR-013
+
+## OQ-004: On which platforms can the Reader refresh from the menu and by pulling down a list?
+
+**Element:** UC-003 BR-001
+**Raised by:** /use-case-spec, 2026-11-12
+**Blocking:** No
+**Status:** Resolved
+
+BR-001 named "the toolbar, the menu, or by pulling down a list" without a platform. The Mac has a menu bar but no
+pull-down gesture in its lists; iPhone has no menu bar, and iPad shows one only with a keyboard attached. Readings:
+(a) the menu on the Mac only, pulling down on iPhone and iPad only; (b) the menu also on iPad; (c) every way on every
+platform where it exists.
+
+**Assumed:** (a) — the toolbar everywhere; the menu on the Mac; pulling down a list on iPhone and iPad.
+
+**Answer:** Confirmed (a).
+**Answered by:** Simon Martinelli, 2026-11-12
+**Resolved in:** UC-003 BR-001

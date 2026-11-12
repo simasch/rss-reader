@@ -108,7 +108,7 @@ _None — an empty library and a refresh that is already running are handled whe
 
 ### BR-001: Refresh Schedule
 
-Feeds are refreshed when the app starts and then every 30 minutes while it runs. On iPhone and iPad no refresh runs while the app is in the background; when the interval elapsed in the meantime, the refresh follows as soon as the app returns to the foreground. The Reader can refresh at any time from the toolbar, the menu, or by pulling down a list.
+Feeds are refreshed when the app starts and then every 30 minutes while it runs. On iPhone and iPad no refresh runs while the app is in the background; when the interval elapsed in the meantime, the refresh follows as soon as the app returns to the foreground. The Reader can refresh at any time from the toolbar; on the Mac also from the menu or with the keyboard shortcut ⌘R, and on iPhone and iPad also by pulling down a list.
 
 ### BR-002: One Refresh at a Time
 

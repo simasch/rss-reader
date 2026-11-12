@@ -4,7 +4,7 @@ import Foundation
 /// network. Registered for `URLSession.shared`, which `FeedFetcher` uses.
 final class FeedPublisherStub: URLProtocol, @unchecked Sendable {
     enum Answer: Sendable {
-        case document(String, status: Int = 200, delay: Duration = .zero)
+        case document(String, status: Int = 200, delay: Duration = .zero, headers: [String: String] = [:])
         case redirect(to: URL)
         case failure(URLError.Code)
     }
@@ -34,6 +34,52 @@ final class FeedPublisherStub: URLProtocol, @unchecked Sendable {
 
     static var receivedRequests: [URLRequest] { lock.withLock { requests } }
 
+    /// Changes the answer for one address while the stub is installed, for a test that needs a second answer.
+    static func answer(_ url: URL, with answer: Answer) {
+        lock.withLock { answers[url] = answer }
+    }
+
+    /// Installs `answers` for the duration of `body` and holds the stub alone meanwhile. Swift Testing runs suites
+    /// in parallel and the stub is global, so every suite that installs answers goes through here.
+    static func withAnswers<T>(
+        _ answers: [URL: Answer],
+        isolation: isolated (any Actor)? = #isolation,
+        _ body: () async throws -> T
+    ) async rethrows -> T {
+        await owner.acquire()
+        install(answers)
+        do {
+            let result = try await body()
+            uninstall()
+            await owner.release()
+            return result
+        } catch {
+            uninstall()
+            await owner.release()
+            throw error
+        }
+    }
+
+    private static let owner = Owner()
+
+    /// Hands the stub to one suite at a time, in the order they ask.
+    private actor Owner {
+        private var busy = false
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+
+        func acquire() async {
+            if busy {
+                await withCheckedContinuation { waiting.append($0) }
+            } else {
+                busy = true
+            }
+        }
+
+        func release() {
+            if waiting.isEmpty { busy = false } else { waiting.removeFirst().resume() }
+        }
+    }
+
     override class func canInit(with request: URLRequest) -> Bool {
         ["http", "https"].contains(request.url?.scheme?.lowercased() ?? "")
     }
@@ -54,11 +100,12 @@ final class FeedPublisherStub: URLProtocol, @unchecked Sendable {
             client?.urlProtocolDidFinishLoading(self)
         case .failure(let code):
             client?.urlProtocol(self, didFailWithError: URLError(code))
-        case .document(let body, let status, let delay):
+        case .document(let body, let status, let delay, let headers):
             let deliver = { [self] in
                 guard !cancelled else { return }
+                let fields = ["Content-Type": "application/xml"].merging(headers) { _, new in new }
                 let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1",
-                                               headerFields: ["Content-Type": "application/xml"])!
+                                               headerFields: fields)!
                 client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
                 client?.urlProtocol(self, didLoad: Data(body.utf8))
                 client?.urlProtocolDidFinishLoading(self)

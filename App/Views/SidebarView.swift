@@ -67,11 +67,12 @@ struct SidebarView: View {
             Text(unsubscribeError ?? "")
         }
         #if os(iOS)
+        // UC-003 BR-001: the Reader refreshes by pulling down the list.
         .refreshable { await store.refreshAll() }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [Platform.opmlType, .xml]) { result in
             do {
                 if try store.importOPML(from: result.get()) > 0 {
-                    Task { await store.refreshAll() }
+                    Task { await store.refreshAll(requestedByImport: true) }
                 }
             } catch {
                 opmlError = error.localizedDescription
@@ -128,13 +129,26 @@ private struct FeedRow: View {
 
     var body: some View {
         Label {
-            HStack(spacing: 4) {
-                Text(feed.title).lineLimit(1)
-                if let error = feed.lastError {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.yellow)
-                        .help(error)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(feed.title).lineLimit(1)
+                    // UC-003 A2: the problem of the latest refresh is shown with the feed.
+                    if let error = feed.lastError {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                            .help(error)
+                            .accessibilityLabel(error)
+                    }
                 }
+                #if os(iOS)
+                // iPhone and iPad show no tooltip, so the problem is written under the title.
+                if let error = feed.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                #endif
             }
         } icon: {
             AsyncImage(url: faviconURL) { phase in

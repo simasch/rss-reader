@@ -13,6 +13,7 @@ enum FeedFetcher {
     #endif
 
     /// Fetches a feed using conditional GET so unchanged feeds cost a 304 instead of a full download.
+    // UC-003 BR-009: the stored version is sent along, so an unchanged feed is not downloaded again.
     static func fetch(_ url: URL, etag: String? = nil, lastModified: String? = nil) async throws -> FetchResult {
         let (data, response) = try await get(url, etag: etag, lastModified: lastModified)
         if response.statusCode == 304 { return .notModified }

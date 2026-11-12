@@ -746,20 +746,19 @@ private func withForm(
         activeStore = store
     }
 
-    let saved = Pasteboard.save()
-    Pasteboard.set(clipboard)
-    FeedPublisherStub.install(answers)
-    defer {
-        FeedPublisherStub.uninstall()
-        Pasteboard.restore(saved)
-    }
+    // The stub is held for the whole test, so no other suite's answers replace these meanwhile.
+    try await FeedPublisherStub.withAnswers(answers) {
+        let saved = Pasteboard.save()
+        Pasteboard.set(clipboard)
+        defer { Pasteboard.restore(saved) }
 
-    activeStore.isAddingFeed = true
-    let sheet = AddFeedSheet()
-    let form = Form(sheet: sheet, store: activeStore, libraryURL: libraryURL)
-    try await ViewHosting.host(SheetHost(store: activeStore, sheet: sheet)) {
-        try await body(form)
-        activeStore.isAddingFeed = false
+        activeStore.isAddingFeed = true
+        let sheet = AddFeedSheet()
+        let form = Form(sheet: sheet, store: activeStore, libraryURL: libraryURL)
+        try await ViewHosting.host(SheetHost(store: activeStore, sheet: sheet)) {
+            try await body(form)
+            activeStore.isAddingFeed = false
+        }
     }
 }
 

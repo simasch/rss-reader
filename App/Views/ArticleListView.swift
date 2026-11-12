@@ -49,6 +49,7 @@ struct ArticleListView: View {
                 }
                 #if os(iOS)
                 .listStyle(.plain)
+                // UC-003 BR-001: the Reader refreshes by pulling down the list.
                 .refreshable { await store.refreshAll() }
                 // macOS lists move the selection with the arrow keys natively; on iPadOS they only
                 // move the focus highlight, so step through the articles explicitly.
@@ -66,18 +67,28 @@ struct ArticleListView: View {
                 .keyboardShortcut("k")
                 .help("Mark All as Read (⌘K)")
 
+                // UC-003 BR-001: the Reader refreshes from the toolbar at any time.
                 Button { Task { await store.refreshAll() } } label: {
+                    // UC-003 step 2: the toolbar shows that a refresh is running.
                     if store.isRefreshing {
                         ProgressView().controlSize(.small)
                     } else {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
                 }
+                // UC-003 BR-002: the refresh action is disabled while a refresh is running.
                 .disabled(store.isRefreshing)
-                .help("Refresh All (⌘R)")
+                .help(Self.refreshHelp)
             }
         }
     }
+
+    // UC-003 BR-001: the keyboard shortcut ⌘R exists on the Mac only, so only the Mac names it.
+    #if os(macOS)
+    static let refreshHelp = "Refresh All (⌘R)"
+    #else
+    static let refreshHelp = "Refresh All"
+    #endif
 
     private var title: String {
         switch sidebarSelection {

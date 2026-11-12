@@ -14,6 +14,8 @@ struct ParsedFeed: Sendable {
     var title: String?
     var siteURL: URL?
     var items: [ParsedItem] = []
+    /// False when the document broke off after at least one readable item (a damaged feed).
+    var isComplete = true
 }
 
 /// Parses RSS 2.0, RSS 1.0 (RDF) and Atom feeds with Foundation's XMLParser.
@@ -27,11 +29,13 @@ final class FeedParser: NSObject, XMLParserDelegate {
         parser.delegate = delegate
         let succeeded = parser.parse()
         guard delegate.sawFeedRoot else { throw FeedError.notAFeed }
-        // Tolerate malformed feeds as long as we got something useful before the error.
+        // UC-003 BR-003: a damaged feed is accepted when at least one article was read before the damage.
         if !succeeded && delegate.feed.items.isEmpty {
             throw FeedError.parse(parser.parserError?.localizedDescription ?? "unknown error")
         }
-        return delegate.feed
+        var feed = delegate.feed
+        feed.isComplete = succeeded
+        return feed
     }
 
     private let baseURL: URL

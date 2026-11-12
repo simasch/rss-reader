@@ -15,6 +15,11 @@ public final class FeedStore {
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    /// An import asked for a refresh while one was running (UC-003 BR-002).
+    @ObservationIgnored private var refreshPending = false
+    @ObservationIgnored private let refreshInterval: Duration
+    @ObservationIgnored private var scheduleTask: Task<Void, Never>?
+    @ObservationIgnored private var nextScheduledRefresh: ContinuousClock.Instant?
 
     /// Read articles that dropped out of their feed are removed after this long (starred ones are kept).
     private static let retention: TimeInterval = 30 * 24 * 60 * 60
@@ -25,8 +30,9 @@ public final class FeedStore {
             .appending(path: "library.json")
     }
 
-    public init(fileURL: URL = FeedStore.defaultFileURL) {
+    public init(fileURL: URL = FeedStore.defaultFileURL, refreshInterval: Duration = .seconds(30 * 60)) {
         self.fileURL = fileURL
+        self.refreshInterval = refreshInterval
         load()
         #if os(macOS)
         NotificationCenter.default.addObserver(
@@ -192,12 +198,26 @@ public final class FeedStore {
 
     // MARK: - Refresh
 
-    public func refreshAll() async {
-        guard !isRefreshing, !feeds.isEmpty else { return }
+    /// Refreshes every subscribed feed. `requestedByImport` marks the refresh an import asks for (UC-006).
+    public func refreshAll(requestedByImport: Bool = false) async {
+        // UC-003 BR-002: one refresh at a time; an import's request waits for the running one (max. one).
+        guard !isRefreshing else {
+            if requestedByImport { refreshPending = true }
+            return
+        }
+        // UC-003 A6: a library without feeds has nothing to refresh.
+        guard !feeds.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        repeat {
+            refreshPending = false
+            await refreshOnce()
+        } while refreshPending && !feeds.isEmpty
+    }
 
+    private func refreshOnce() async {
         let requests = feeds.map { ($0.id, $0.url, $0.etag, $0.lastModified) }
+        // UC-003 BR-011: each feed is fetched on its own; a failure does not stop the others.
         await withTaskGroup(of: (UUID, Result<FetchResult, Error>).self) { group in
             for (id, url, etag, lastModified) in requests {
                 group.addTask {
@@ -212,27 +232,70 @@ public final class FeedStore {
                 apply(result, toFeed: id)
             }
         }
+        // UC-003 BR-012: an unsaved refresh stays in the library and goes out with the next save, silently.
         save()
     }
 
     private func apply(_ result: Result<FetchResult, Error>, toFeed id: UUID) {
+        // UC-003 A4: the result of a feed unsubscribed during the refresh is discarded.
         guard let i = feeds.firstIndex(where: { $0.id == id }) else { return }
         switch result {
         case .success(.notModified):
+            // UC-003 A1: an unchanged feed clears its error and keeps its articles.
             feeds[i].lastError = nil
         case .success(.updated(let parsed, let etag, let lastModified)):
+            // UC-003 BR-013: the feed's title stays as given at subscription or import.
             feeds[i].etag = etag
             feeds[i].lastModified = lastModified
             feeds[i].lastError = nil
             if let site = parsed.siteURL { feeds[i].siteURL = site }
             let current = merge(parsed.items, into: id)
-            let cutoff = Date.now.addingTimeInterval(-Self.retention)
-            articles.removeAll {
-                $0.feedID == id && $0.isRead && !$0.isStarred && $0.fetched < cutoff && !current.contains($0.id)
-            }
+            // UC-003 BR-003: a damaged feed removes no article.
+            guard parsed.isComplete else { return }
+            removeExpiredArticles(ofFeed: id, keeping: current)
         case .failure(let error):
+            // UC-003 BR-011: the problem stays with the feed until a later refresh of it succeeds.
             feeds[i].lastError = error.localizedDescription
         }
+    }
+
+    // UC-003 BR-008: read, unstarred, fetched over 30 days ago, and gone from its complete feed.
+    private func removeExpiredArticles(ofFeed id: UUID, keeping current: Set<Article.ID>) {
+        let cutoff = Date.now.addingTimeInterval(-Self.retention)
+        articles.removeAll {
+            $0.feedID == id && $0.isRead && !$0.isStarred && $0.fetched < cutoff && !current.contains($0.id)
+        }
+    }
+
+    // MARK: - Schedule
+
+    /// Starts or resumes the scheduled refresh: at once when it is due, then every refresh interval.
+    // UC-003 BR-001: refresh at start and every 30 minutes; a missed one follows on resume.
+    public func resumeScheduledRefresh() {
+        guard scheduleTask == nil else { return }
+        scheduleTask = Task { [weak self] in
+            while let delay = self?.runScheduledRefreshIfDue() {
+                try? await Task.sleep(for: delay)
+                if Task.isCancelled { return }
+            }
+        }
+    }
+
+    /// Stops the scheduled refresh while the app is in the background; a running refresh finishes.
+    // UC-003 BR-001: no scheduled refresh runs while the app is in the background on iPhone and iPad.
+    public func pauseScheduledRefresh() {
+        scheduleTask?.cancel()
+        scheduleTask = nil
+    }
+
+    /// Starts the scheduled refresh when it is due and returns the time until the next one.
+    private func runScheduledRefreshIfDue() -> Duration {
+        let now = ContinuousClock.now
+        if let due = nextScheduledRefresh, now < due { return due - now }
+        nextScheduledRefresh = now + refreshInterval
+        // Unstructured, so pausing the schedule does not cancel a refresh that is under way.
+        Task { await refreshAll() }
+        return refreshInterval
     }
 
     /// Inserts new items and updates existing ones, keeping read/starred state. Returns the IDs seen.
@@ -256,6 +319,7 @@ public final class FeedStore {
             let snippet = HTMLText.plainText(item.summary ?? html)
 
             if let i = index[id] {
+                // UC-003 BR-007: read and starred stay; the date is kept when the feed drops it.
                 articles[i].title = title
                 articles[i].link = item.link
                 articles[i].author = item.author
