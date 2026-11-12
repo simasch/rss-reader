@@ -8,7 +8,7 @@
 **Secondary Actors:** Feed Publisher  
 **Goal:** Bring every subscribed feed up to date so that new articles appear and changed articles are updated  
 **Trigger:** The Reader asks for a refresh, the app starts, or the 30-minute refresh interval elapses  
-**Status:** Approved  
+**Status:** Done  
 
 ## Preconditions
 
