@@ -7,7 +7,7 @@
 **Primary Actor:** Reader  
 **Goal:** Browse the articles of all or of selected feeds and read them, so the Reader keeps up with new content  
 **Trigger:** The Reader opens the app or selects a list in the sidebar  
-**Status:** Approved  
+**Status:** Done  
 
 ## Preconditions
 
