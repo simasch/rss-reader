@@ -71,3 +71,19 @@ platform where it exists.
 **Answer:** Confirmed (a).
 **Answered by:** Simon Martinelli, 2026-11-12
 **Resolved in:** UC-003 BR-001
+
+## OQ-005: May the Reader open an article in the browser from the article list?
+
+**Element:** UC-004 A3
+**Raised by:** /use-case-implement, 2026-11-12
+**Blocking:** No
+**Status:** Resolved
+
+A3 offers opening in the browser only for the displayed article (step 5), and A4 offers only sharing and copying the
+link from the list (step 3). The app's article list also had an "Open in Browser" item in its context menu, which no
+step or flow names. Readings: (a) remove it, opening in the browser is offered for the displayed article only; (b)
+keep it and widen A3 to step 3.
+
+**Answer:** (a) — remove the list's "Open in Browser"; the browser opens only from the displayed article and its links.
+**Answered by:** Simon Martinelli, 2026-11-12
+**Resolved in:** UC-004 A3

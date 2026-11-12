@@ -7,11 +7,11 @@
 **Primary Actor:** Reader  
 **Goal:** Browse the articles of all or of selected feeds and read them, so the Reader keeps up with new content  
 **Trigger:** The Reader opens the app or selects a list in the sidebar  
-**Status:** Draft  
+**Status:** Approved  
 
 ## Preconditions
 
-- The library holds at least one feed
+_None — an empty library is handled in A1._
 
 ## Main Success Scenario
 
@@ -51,15 +51,23 @@
 1. System opens the article's web page, or the linked page, in the default browser.
 2. Use case continues at step 6.
 
-### A4: Share or Copy the Link
+### A4: Share or Copy a Link from the List
 
-**Trigger:** Reader chooses to share the article or to copy its link (step 3 or step 5)  
+**Trigger:** Reader chooses to share an article of the list or to copy its link (step 3)  
 **Flow:**
 
-1. System passes the article's link to the share sheet on iPhone and iPad, or copies it to the clipboard.
+1. System passes the article's link to the share sheet, or copies it to the clipboard, as the Reader chose.
+2. Use case continues at step 4.
+
+### A5: Share or Copy the Displayed Article's Link
+
+**Trigger:** Reader chooses to share the displayed article or to copy its link (step 5)  
+**Flow:**
+
+1. System passes the article's link to the share sheet, or copies it to the clipboard, as the Reader chose.
 2. Use case continues at step 6.
 
-### A5: Reader Selects Another List
+### A6: Reader Selects Another List
 
 **Trigger:** Reader selects another smart list or feed (step 6)  
 **Flow:**
@@ -90,7 +98,7 @@ Articles are listed newest first by publication date; an article without a publi
 
 ### BR-003: Opening Marks as Read
 
-Displaying an article marks it as read.
+Displaying an article marks it as read; the change is saved as BR-008 says.
 
 ### BR-004: Stable Unread List
 
@@ -106,4 +114,8 @@ The sidebar shows the number of unread articles for each feed and the total for 
 
 ### BR-007: Open and Share Need a Link
 
-Opening in the browser, sharing, and copying the link are offered only for articles that have a link.
+Opening in the browser, sharing, and copying the link are offered only for articles that have a link. Sharing and copying the link are offered on every platform.
+
+### BR-008: Saving Read State
+
+An article marked as read by displaying it is saved like any other read change (UC-005 BR-002). When the library cannot be saved, the article stays read and is saved with the next save of the library; the Reader is not told.

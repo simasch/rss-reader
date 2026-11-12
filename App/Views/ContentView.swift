@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(FeedStore.self) private var store
+    // UC-004 step 1: the app opens with Unread selected.
     @State private var sidebarSelection: SidebarItem? = .unread
     @State private var selectedArticleID: Article.ID?
     /// Articles opened since the current list was shown; they stay in "Unread" until the list changes.
@@ -23,17 +24,26 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 280, ideal: 360)
         } detail: {
             if let id = selectedArticleID, let article = store.article(withID: id) {
-                ArticleDetailView(article: article)
+                // UC-004 step 6: the displayed article steps to its neighbours in the list.
+                ArticleDetailView(
+                    article: article,
+                    previousArticleID: neighbour(of: id, offset: -1),
+                    nextArticleID: neighbour(of: id, offset: 1),
+                    select: { selectedArticleID = $0 }
+                )
             } else {
                 ContentUnavailableView("No Article Selected", systemImage: "doc.richtext")
             }
         }
+        // UC-004 A6: another list clears the selection and forgets the articles read in the visit.
         .onChange(of: sidebarSelection) {
             selectedArticleID = nil
             keptArticleIDs = []
         }
+        // UC-004 BR-003: displaying an article marks it as read.
         .onChange(of: selectedArticleID) { _, id in
             guard let id else { return }
+            // UC-004 BR-004: the article stays in Unread until another list is selected.
             keptArticleIDs.insert(id)
             store.setRead(true, articleID: id)
         }
@@ -41,6 +51,14 @@ struct ContentView: View {
             AddFeedSheet()
         }
         .onReceive(inspection.notice) { inspection.visit(self, $0) }
+    }
+
+    /// The article `offset` places before or after the given one in the displayed list, if any.
+    private func neighbour(of id: Article.ID, offset: Int) -> Article.ID? {
+        let articles = store.articles(in: sidebarSelection, keeping: keptArticleIDs)
+        guard let index = articles.firstIndex(where: { $0.id == id }),
+              articles.indices.contains(index + offset) else { return nil }
+        return articles[index + offset].id
     }
 
     /// UC-002 A2: drops the feed's articles from the selection and from the read articles kept in

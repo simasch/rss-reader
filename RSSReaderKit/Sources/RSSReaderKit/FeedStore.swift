@@ -48,13 +48,16 @@ public final class FeedStore {
 
     /// The articles shown for a sidebar item, newest first. `keep` lists read articles that stay in
     /// "Unread" anyway, so the list does not shift under the user while they move through it.
+    // UC-004 BR-001: Unread, All Articles, Starred, or one feed's articles.
     public func articles(in selection: SidebarItem?, keeping keep: Set<Article.ID> = []) -> [Article] {
         let filtered: [Article] = switch selection {
+        // UC-004 BR-004: articles read during the visit stay in Unread until the list changes.
         case .unread: articles.filter { !$0.isRead || keep.contains($0.id) }
         case .starred: articles.filter(\.isStarred)
         case .feed(let id): articles.filter { $0.feedID == id }
         case .all, nil: articles
         }
+        // UC-004 BR-002: newest first by publication date, else by the time first fetched.
         return filtered.sorted { $0.sortDate > $1.sortDate }
     }
 
@@ -66,6 +69,7 @@ public final class FeedStore {
         feeds.first { $0.id == id }
     }
 
+    // UC-004 BR-006: unread articles per feed; the Unread list shows their total.
     public func unreadCountsByFeed() -> [UUID: Int] {
         articles.reduce(into: [:]) { counts, article in
             if !article.isRead { counts[article.feedID, default: 0] += 1 }
@@ -77,6 +81,7 @@ public final class FeedStore {
     public func setRead(_ read: Bool, articleID: Article.ID) {
         guard let i = articles.firstIndex(where: { $0.id == articleID }), articles[i].isRead != read else { return }
         articles[i].isRead = read
+        // UC-004 BR-008: saved like any read change; on failure it stays read for the next save.
         scheduleSave()
     }
 

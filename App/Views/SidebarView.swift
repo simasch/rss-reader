@@ -12,8 +12,10 @@ struct SidebarView: View {
 
     var body: some View {
         let counts = store.unreadCountsByFeed()
+        // UC-004 step 1: the smart lists and the subscribed feeds with their unread counts.
         List(selection: $selection) {
             Section("Smart Feeds") {
+                // UC-004 BR-006: Unread shows the total of the feeds' unread counts.
                 Label("Unread", systemImage: "largecircle.fill.circle")
                     .badge(counts.values.reduce(0, +))
                     .tag(SidebarItem.unread)
@@ -24,6 +26,7 @@ struct SidebarView: View {
             }
             Section("Feeds") {
                 ForEach(store.feeds) { feed in
+                    // UC-004 BR-006: each feed shows its number of unread articles.
                     FeedRow(feed: feed)
                         .badge(counts[feed.id] ?? 0)
                         .tag(SidebarItem.feed(feed.id))

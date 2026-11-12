@@ -71,7 +71,7 @@ actor without a row is a person or a role. Without a Client layer the section is
 |--------------------|----------------------------------------------------------------------------------------------|
 | Build              | `Scripts/build-app.sh` (macOS); `xcodebuild -project RSSReader.xcodeproj -scheme RSSReader -destination 'generic/platform=iOS Simulator' build` (iOS) |
 | Unit tests         | `cd RSSReaderKit && swift test`                                                              |
-| Integration tests  | `xcodebuild test -project RSSReader.xcodeproj -scheme RSSReader -destination 'platform=macOS,arch=arm64'` (macOS); `xcodebuild test -project RSSReader.xcodeproj -scheme RSSReader -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:RSSReaderTests` (iOS) |
+| Integration tests  | `xcodebuild test -project RSSReader.xcodeproj -scheme RSSReader -destination 'platform=macOS,arch=arm64'` (macOS); `xcodebuild test -project RSSReader.xcodeproj -scheme RSSReader -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.2' -only-testing:RSSReaderTests` (iOS) |
 | End-to-end tests   | –                                                                                            |
 
 ## Markers

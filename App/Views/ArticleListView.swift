@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ArticleListView: View {
     @Environment(FeedStore.self) private var store
-    @Environment(\.openURL) private var openURL
     let sidebarSelection: SidebarItem?
     @Binding var selectedArticleID: Article.ID?
     let keptArticleIDs: Set<Article.ID>
@@ -13,6 +12,7 @@ struct ArticleListView: View {
         let articles = store.articles(in: sidebarSelection, keeping: keptArticleIDs)
         Group {
             if store.feeds.isEmpty {
+                // UC-004 A1: an empty library offers to add a feed (UC-001).
                 ContentUnavailableView {
                     Label("No Feeds", systemImage: "dot.radiowaves.up.forward")
                 } description: {
@@ -21,12 +21,14 @@ struct ArticleListView: View {
                     Button("Add Feed…") { store.isAddingFeed = true }
                 }
             } else if articles.isEmpty {
+                // UC-004 A2: an empty list says so, worded for Unread or any other list.
                 ContentUnavailableView(
                     "No Articles",
                     systemImage: "checkmark.circle",
                     description: Text(sidebarSelection == .unread ? "You're all caught up." : "Nothing here yet.")
                 )
             } else {
+                // UC-004 step 3: feed, date, title, snippet, read state, and star of each article.
                 List(articles, selection: $selectedArticleID) { article in
                     ArticleRow(article: article, feedTitle: store.feed(withID: article.feedID)?.title)
                         .contextMenu { contextMenu(for: article) }
@@ -111,9 +113,11 @@ struct ArticleListView: View {
     private func contextMenu(for article: Article) -> some View {
         Button(article.isRead ? "Mark as Unread" : "Mark as Read") { store.toggleRead(article.id) }
         Button(article.isStarred ? "Unstar" : "Star") { store.toggleStar(article.id) }
+        // UC-004 BR-007: sharing and copying the link only with a link, on every platform.
         if let link = article.link {
             Divider()
-            Button("Open in Browser") { openURL(link) }
+            // UC-004 A4: share an article of the list or copy its link.
+            ShareLink(item: link)
             Button("Copy Link") { Platform.copyToPasteboard(link.absoluteString) }
         }
     }
