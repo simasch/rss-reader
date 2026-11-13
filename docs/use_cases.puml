@@ -1,18 +1,42 @@
 @startuml Use Cases Overview
 left to right direction
 
-actor "Reader" as reader
-actor "Scheduler" as scheduler
-actor "Feed Publisher" as publisher
+skinparam shadowing false
+skinparam legendBackgroundColor #FFFFFF
+skinparam ArrowColor #555555
+skinparam rectangle {
+    BackgroundColor #F8F9FA
+    BorderColor #6C757D
+}
+skinparam actor {
+    BackgroundColor<<primary>> #BBDEFB
+    BorderColor<<primary>> #1565C0
+    BackgroundColor<<secondary>> #FFE0B2
+    BorderColor<<secondary>> #E65100
+}
+skinparam usecase {
+    BackgroundColor<<Done>> #C8E6C9
+    BorderColor<<Done>> #2E7D32
+    BackgroundColor<<Draft>> #FFF9C4
+    BorderColor<<Draft>> #F9A825
+}
+hide <<primary>> stereotype
+hide <<secondary>> stereotype
+hide <<Done>> stereotype
+hide <<Draft>> stereotype
+
+actor "Reader" as reader <<primary>>
+actor "Scheduler" as scheduler <<primary>>
+actor "Feed Publisher" as publisher <<secondary>>
 
 rectangle "RSS Reader" {
-    usecase "UC-001\nSubscribe to Feed" as UC001
-    usecase "UC-002\nUnsubscribe from Feed" as UC002
-    usecase "UC-003\nRefresh Feeds" as UC003
-    usecase "UC-004\nRead Articles" as UC004
-    usecase "UC-005\nTrack Read and Starred Articles" as UC005
-    usecase "UC-006\nImport Subscriptions" as UC006
-    usecase "UC-007\nExport Subscriptions" as UC007
+    usecase "UC-001\nSubscribe to Feed" as UC001 <<Done>>
+    usecase "UC-002\nUnsubscribe from Feed" as UC002 <<Done>>
+    usecase "UC-003\nRefresh Feeds" as UC003 <<Done>>
+    usecase "UC-004\nRead Articles" as UC004 <<Done>>
+    usecase "UC-005\nTrack Read and Starred Articles" as UC005 <<Done>>
+    usecase "UC-006\nImport Subscriptions" as UC006 <<Done>>
+    usecase "UC-007\nExport Subscriptions" as UC007 <<Draft>>
 }
 
 reader --> UC001
@@ -26,5 +50,13 @@ scheduler --> UC003
 
 UC001 --> publisher
 UC003 --> publisher
+
+legend right
+    |= Color |= Meaning |
+    |<#BBDEFB>     | Primary actor |
+    |<#FFE0B2>     | Secondary actor |
+    |<#C8E6C9>     | Use case: Done |
+    |<#FFF9C4>     | Use case: Draft |
+endlegend
 
 @enduml
