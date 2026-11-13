@@ -158,7 +158,7 @@ list."; (b) one message per case, each naming its problem; (c) the system's own 
 **Element:** UC-007 BR-001
 **Raised by:** /use-case-spec, 2026-11-13
 **Blocking:** No
-**Status:** Open
+**Status:** Resolved
 
 BR-001 exports "the feed title" without saying where it goes. OPML 2.0 names an outline by its `text` attribute;
 many feed readers, and UC-006 BR-003, read `title` first. Readings: (a) the title in both `text` and `title`; (b)
@@ -166,3 +166,7 @@ many feed readers, and UC-006 BR-003, read `title` first. Readings: (a) the titl
 
 **Assumed:** (a) — the feed title is written as both the entry's text and its title, so UC-006 and other feed readers
 take it over.
+
+**Answer:** Confirmed (a).
+**Answered by:** Simon Martinelli, 2026-11-13
+**Resolved in:** UC-007 BR-001

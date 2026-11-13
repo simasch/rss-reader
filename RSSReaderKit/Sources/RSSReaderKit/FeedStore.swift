@@ -250,8 +250,17 @@ public final class FeedStore {
         return imported.count
     }
 
+    /// Writes every subscription to an OPML file at `url` (UC-007 step 4). The library is not changed.
     public func exportOPML(to url: URL) throws {
-        try OPML.export(feeds).write(to: url, atomically: true, encoding: .utf8)
+        do {
+            // UC-007 A1: the file is written to a temporary file and moved into place, so a failure
+            // leaves no partial file and keeps a file that already had the chosen name.
+            try OPML.export(feeds).write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            print("Failed to export subscriptions: \(error)")
+            // UC-007 A1: one message, whatever kept the file from being written.
+            throw FeedError.exportFailed
+        }
     }
 
     // MARK: - Refresh

@@ -16,6 +16,8 @@ struct FeedCommands: Commands {
         CommandGroup(replacing: .importExport) {
             Button("Import OPML…", action: importOPML)
             Button("Export OPML…", action: exportOPML)
+                // UC-007 precondition: the library holds at least one feed.
+                .disabled(!SubscriptionExport(store: store).canExport)
         }
         CommandMenu("Feeds") {
             // UC-003 BR-001: on the Mac the Reader can also refresh from the menu.
@@ -43,14 +45,20 @@ struct FeedCommands: Commands {
         }
     }
 
-    private func exportOPML() {
+    /// UC-007 step 2: the panel that asks where to save the file, proposing "Subscriptions.opml".
+    static func makeExportPanel() -> NSSavePanel {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "Subscriptions.opml"
         panel.allowedContentTypes = [Platform.opmlType]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try store.exportOPML(to: url)
-        } catch {
+        return panel
+    }
+
+    private func exportOPML() {
+        let panel = Self.makeExportPanel()
+        // UC-007 A2: a cancelled panel chooses no location.
+        let location = panel.runModal() == .OK ? panel.url : nil
+        // UC-007 A1: "The subscriptions could not be exported." is displayed in an alert.
+        if case .failed(let error) = SubscriptionExport(store: store).run(location) {
             NSAlert(error: error).runModal()
         }
     }

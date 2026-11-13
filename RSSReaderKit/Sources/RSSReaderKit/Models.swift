@@ -48,6 +48,7 @@ public enum FeedError: LocalizedError {
     case unsubscribeFailed
     case notOPML
     case importFailed
+    case exportFailed
     case badResponse
     case http(Int)
     case parse(String)
@@ -62,6 +63,7 @@ public enum FeedError: LocalizedError {
         case .unsubscribeFailed: "The feed could not be unsubscribed. Please try again."
         case .notOPML: "The file is not an OPML subscription list."
         case .importFailed: "The subscriptions could not be imported. Please try again."
+        case .exportFailed: "The subscriptions could not be exported."
         case .badResponse: "The server returned an unexpected response."
         case .http(let code): "The server responded with HTTP \(code)."
         case .parse(let message): "The feed could not be parsed: \(message)"

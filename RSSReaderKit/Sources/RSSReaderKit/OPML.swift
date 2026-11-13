@@ -26,6 +26,9 @@ public enum OPML {
         return candidates.first { !$0.isEmpty } ?? feedURL.host() ?? feedURL.absoluteString
     }
 
+    /// The OPML text of a subscription list, with the feeds in the order given.
+    // UC-007 BR-001: OPML 2.0 without folders; title as text and title, feed address, website.
+    // UC-007 BR-002: entries in the order of `feeds`, which is the subscription order.
     public static func export(_ feeds: [Feed]) -> String {
         let e = HTMLText.escape
         let outlines = feeds.map { feed in

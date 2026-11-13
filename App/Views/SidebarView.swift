@@ -54,7 +54,8 @@ struct SidebarView: View {
                     Button { isExporting = true } label: {
                         Label("Export OPML…", systemImage: "square.and.arrow.up")
                     }
-                    .disabled(store.feeds.isEmpty)
+                    // UC-007 precondition: the library holds at least one feed.
+                    .disabled(!SubscriptionExport(store: store).canExport)
                 } label: {
                     Label("More", systemImage: "ellipsis.circle")
                 }
@@ -75,13 +76,14 @@ struct SidebarView: View {
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [Platform.opmlType, .xml]) { result in
             importSubscriptions(result)
         }
+        // UC-007 step 2: asks where to save the file, proposing "Subscriptions.opml".
         .fileExporter(
             isPresented: $isExporting,
-            document: OPMLDocument(text: OPML.export(store.feeds)),
+            document: SubscriptionExport(store: store).document,
             contentType: Platform.opmlType,
             defaultFilename: "Subscriptions.opml"
         ) { result in
-            if case .failure(let error) = result { opmlError = error.localizedDescription }
+            exportFinished(result)
         }
         .alert("OPML Error", isPresented: Binding { opmlError != nil } set: { if !$0 { opmlError = nil } }) {
             Button("OK", role: .cancel) {}
@@ -101,6 +103,15 @@ struct SidebarView: View {
     @discardableResult
     func importSubscriptions(_ selection: Result<URL, Error>?) -> SubscriptionImport.Outcome {
         let outcome = SubscriptionImport(store: store).run(selection)
+        if let message = outcome.message { opmlError = message }
+        return outcome
+    }
+
+    /// UC-007 step 4: the file exporter wrote the file, or could not.
+    /// A1: a failed export displays its message in the OPML Error alert. A2: a cancelled one displays nothing.
+    @discardableResult
+    func exportFinished(_ result: Result<URL, Error>) -> SubscriptionExport.Outcome {
+        let outcome = SubscriptionExport(store: store).finish(result)
         if let message = outcome.message { opmlError = message }
         return outcome
     }
@@ -174,23 +185,3 @@ private struct FeedRow: View {
         return URL(string: "\(site.scheme ?? "https")://\(host)/favicon.ico")
     }
 }
-
-#if os(iOS)
-import UniformTypeIdentifiers
-
-/// Wraps exported OPML text for SwiftUI's file exporter.
-private struct OPMLDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [Platform.opmlType] }
-    var text: String
-
-    init(text: String) { self.text = text }
-
-    init(configuration: ReadConfiguration) throws {
-        text = String(decoding: configuration.file.regularFileContents ?? Data(), as: UTF8.self)
-    }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: Data(text.utf8))
-    }
-}
-#endif
