@@ -41,6 +41,7 @@
 				Views/ContentView.swift,
 				Views/RefreshSchedule.swift,
 				Views/SidebarView.swift,
+				Views/SubscriptionImport.swift,
 			);
 			target = C50000000000000000000001 /* RSSReaderTests */;
 		};

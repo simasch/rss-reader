@@ -142,30 +142,3 @@ private let base = URL(string: "https://example.com/feed.xml")!
         #expect(entries[0].siteURL == URL(string: "https://a.example"))
     }
 }
-
-@Suite @MainActor struct FeedStoreTests {
-    private func makeStore() -> (FeedStore, URL) {
-        let dir = FileManager.default.temporaryDirectory.appending(path: "RSSReaderTests-\(UUID().uuidString)")
-        let file = dir.appending(path: "library.json")
-        return (FeedStore(fileURL: file), file)
-    }
-
-    @Test func importsOPMLAndPersists() throws {
-        let (store, file) = makeStore()
-        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
-
-        let opml = file.deletingLastPathComponent().appending(path: "subs.opml")
-        try FileManager.default.createDirectory(at: opml.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try OPML.export([
-            Feed(title: "Zeta", url: URL(string: "https://z.example/feed")!),
-            Feed(title: "alpha", url: URL(string: "https://a.example/feed")!),
-        ]).write(to: opml, atomically: true, encoding: .utf8)
-
-        #expect(try store.importOPML(from: opml) == 2)
-        #expect(try store.importOPML(from: opml) == 0) // no duplicates
-        #expect(store.feeds.map(\.title) == ["alpha", "Zeta"])
-
-        let reloaded = FeedStore(fileURL: file)
-        #expect(reloaded.feeds.map(\.url) == store.feeds.map(\.url))
-    }
-}

@@ -215,22 +215,39 @@ public final class FeedStore {
         }
     }
 
+    /// Imports the feeds of an OPML file that are not subscribed yet and saves the library; returns the
+    /// number of feeds added. Undoes the import when the save fails.
     @discardableResult
     public func importOPML(from url: URL) throws -> Int {
         // Files picked on iOS are security-scoped; the call is a no-op for ordinary URLs.
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let entries = try OPML.parse(Data(contentsOf: url))
-        var added = 0
-        for entry in entries where !feeds.contains(where: { $0.url == entry.url }) {
-            feeds.append(Feed(title: entry.title, url: entry.url, siteURL: entry.siteURL))
-            added += 1
+        // UC-006 A1: a file that cannot be read adds nothing and gets one message, whatever the cause.
+        guard let data = try? Data(contentsOf: url) else { throw FeedError.notOPML }
+        let entries = try OPML.parse(data)
+
+        var imported: [Feed] = []
+        // UC-006 BR-002: skip subscribed addresses; of repeated ones only the first (OQ-008).
+        for entry in entries
+        where !feeds.contains(where: { $0.url == entry.url }) && !imported.contains(where: { $0.url == entry.url }) {
+            imported.append(Feed(title: entry.title, url: entry.url, siteURL: entry.siteURL))
         }
-        if added > 0 {
-            sortFeeds()
-            save()
+        // UC-006 A2: nothing new leaves the library unchanged.
+        guard !imported.isEmpty else { return 0 }
+
+        feeds.append(contentsOf: imported)
+        // UC-006 BR-004: imported feeds take the subscription order.
+        sortFeeds()
+        do {
+            try persist()
+        } catch {
+            // UC-006 BR-006: an import that cannot be saved adds no feed.
+            let ids = Set(imported.map(\.id))
+            feeds.removeAll { ids.contains($0.id) }
+            print("Failed to save library: \(error)")
+            throw FeedError.importFailed
         }
-        return added
+        return imported.count
     }
 
     public func exportOPML(to url: URL) throws {

@@ -30,7 +30,7 @@
 **Trigger:** The file cannot be read as a subscription file (step 4)  
 **Flow:**
 
-1. System displays an error message that describes the problem.
+1. System displays the message "The file is not an OPML subscription list.", whatever kept the file from being read.
 2. Use case ends.
 
 ### A2: No New Feeds

@@ -127,10 +127,28 @@ background clause applies to iPhone and iPad only, and the Mac saves on quit and
 **Element:** UC-006 BR-002
 **Raised by:** /use-case-spec, 2026-11-13
 **Blocking:** No
-**Status:** Open
+**Status:** Resolved
 
 An OPML file can hold the same feed address in several entries, for example in two folders, which BR-001 flattens.
 The library allows each feed address only once (`FEED.url` Unique). Readings: (a) the first entry in file order is
 imported and the rest are skipped; (b) the last entry wins; (c) the file is rejected as unreadable (A1).
 
-**Assumed:** (a) — only the first entry with that address is imported, and its title is used.
+**Answer:** (a) — only the first entry with that address is imported, and its title is used.
+**Answered by:** Simon Martinelli, 2026-11-13
+**Resolved in:** UC-006 BR-002
+
+## OQ-009: What does the message for an unreadable subscription file say?
+
+**Element:** UC-006 A1
+**Raised by:** /use-case-test, 2026-11-13
+**Blocking:** No
+**Status:** Resolved
+
+A1 displays "an error message that describes the problem" without stating it, so a test can only check that some
+message is shown. The file can fail in different ways: it cannot be opened, it is not XML, it is XML but not an OPML
+list, or the OPML breaks off. Readings: (a) one message for every case, e.g. "The file is not an OPML subscription
+list."; (b) one message per case, each naming its problem; (c) the system's own description of the error.
+
+**Answer:** (a) — one message for every case: "The file is not an OPML subscription list."
+**Answered by:** Simon Martinelli, 2026-11-13
+**Resolved in:** UC-006 A1

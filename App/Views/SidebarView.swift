@@ -73,13 +73,7 @@ struct SidebarView: View {
         // UC-003 BR-001: the Reader refreshes by pulling down the list.
         .refreshable { await store.refreshAll() }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [Platform.opmlType, .xml]) { result in
-            do {
-                if try store.importOPML(from: result.get()) > 0 {
-                    Task { await store.refreshAll(requestedByImport: true) }
-                }
-            } catch {
-                opmlError = error.localizedDescription
-            }
+            importSubscriptions(result)
         }
         .fileExporter(
             isPresented: $isExporting,
@@ -101,6 +95,15 @@ struct SidebarView: View {
     @State private var isImporting = false
     @State private var isExporting = false
     @State private var opmlError: String?
+
+    /// UC-006 steps 3 to 7: imports the file the Reader selected; `nil` means the selection was cancelled.
+    /// A1, A4: a failed import's message is displayed in the OPML Error alert.
+    @discardableResult
+    func importSubscriptions(_ selection: Result<URL, Error>?) -> SubscriptionImport.Outcome {
+        let outcome = SubscriptionImport(store: store).run(selection)
+        if let message = outcome.message { opmlError = message }
+        return outcome
+    }
     #endif
 
     @ViewBuilder

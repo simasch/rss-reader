@@ -26,15 +26,19 @@ struct FeedCommands: Commands {
         }
     }
 
-    private func importOPML() {
+    /// UC-006 step 2: the panel that asks for the subscription file.
+    static func makeImportPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [Platform.opmlType, .xml]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            if try store.importOPML(from: url) > 0 {
-                Task { await store.refreshAll(requestedByImport: true) }
-            }
-        } catch {
+        return panel
+    }
+
+    private func importOPML() {
+        let panel = Self.makeImportPanel()
+        // UC-006 A3: a cancelled panel selects no file.
+        let selection = panel.runModal() == .OK ? panel.url.map { Result<URL, Error>.success($0) } : nil
+        // UC-006 A1, A4: the message is displayed in an alert.
+        if case .failed(let error) = SubscriptionImport(store: store).run(selection) {
             NSAlert(error: error).runModal()
         }
     }
