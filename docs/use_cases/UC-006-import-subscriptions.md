@@ -7,7 +7,7 @@
 **Primary Actor:** Reader  
 **Goal:** Take over the subscriptions of another feed reader from an exported subscription file, without adding each feed by hand  
 **Trigger:** The Reader chooses to import a subscription file  
-**Status:** Approved  
+**Status:** Done  
 
 ## Preconditions
 
