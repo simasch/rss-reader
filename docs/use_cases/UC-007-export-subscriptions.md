@@ -7,7 +7,7 @@
 **Primary Actor:** Reader  
 **Goal:** Save the subscription list to a file, to back it up or move it to another feed reader  
 **Trigger:** The Reader chooses to export the subscriptions  
-**Status:** Approved  
+**Status:** Done  
 
 ## Preconditions
 

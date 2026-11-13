@@ -19,11 +19,14 @@ skinparam usecase {
     BorderColor<<Done>> #2E7D32
     BackgroundColor<<Draft>> #FFF9C4
     BorderColor<<Draft>> #F9A825
+    BackgroundColor<<Approved>> #B2EBF2
+    BorderColor<<Approved>> #00838F
 }
 hide <<primary>> stereotype
 hide <<secondary>> stereotype
 hide <<Done>> stereotype
 hide <<Draft>> stereotype
+hide <<Approved>> stereotype
 
 actor "Reader" as reader <<primary>>
 actor "Scheduler" as scheduler <<primary>>
@@ -36,7 +39,7 @@ rectangle "RSS Reader" {
     usecase "UC-004\nRead Articles" as UC004 <<Done>>
     usecase "UC-005\nTrack Read and Starred Articles" as UC005 <<Done>>
     usecase "UC-006\nImport Subscriptions" as UC006 <<Done>>
-    usecase "UC-007\nExport Subscriptions" as UC007 <<Draft>>
+    usecase "UC-007\nExport Subscriptions" as UC007 <<Done>>
 }
 
 reader --> UC001
@@ -57,6 +60,7 @@ legend right
     |<#FFE0B2>     | Secondary actor |
     |<#C8E6C9>     | Use case: Done |
     |<#FFF9C4>     | Use case: Draft |
+    |<#B2EBF2>     | Use case: Approved |
 endlegend
 
 @enduml
