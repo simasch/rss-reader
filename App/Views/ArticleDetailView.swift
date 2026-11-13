@@ -9,6 +9,9 @@ struct ArticleDetailView: View {
     var previousArticleID: Article.ID?
     var nextArticleID: Article.ID?
     var select: (Article.ID) -> Void = { _ in }
+    /// Called before the Reader toggles the read state by hand, so the article no longer stays in Unread
+    /// as one opened by displaying it (UC-005 BR-004).
+    var willToggleRead: (Article.ID) -> Void = { _ in }
 
     var body: some View {
         // UC-004 step 5: feed, author, publication date, title, and content.
@@ -37,13 +40,18 @@ struct ArticleDetailView: View {
                 .help("Next Article")
             }
             ToolbarItemGroup {
-                Button { store.toggleRead(article.id) } label: {
+                // UC-005 step 2: toggle the read state of the displayed article.
+                Button {
+                    willToggleRead(article.id)
+                    store.toggleRead(article.id)
+                } label: {
                     Label(article.isRead ? "Mark as Unread" : "Mark as Read",
                           systemImage: article.isRead ? "circle" : "largecircle.fill.circle")
                 }
                 .keyboardShortcut("u", modifiers: [.command, .shift])
                 .help("Toggle Read (⇧⌘U)")
 
+                // UC-005 A1: star or unstar the displayed article.
                 Button { store.toggleStar(article.id) } label: {
                     Label(article.isStarred ? "Unstar" : "Star",
                           systemImage: article.isStarred ? "star.fill" : "star")

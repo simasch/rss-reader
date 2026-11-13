@@ -5,7 +5,7 @@ struct ArticleListView: View {
     @Environment(FeedStore.self) private var store
     let sidebarSelection: SidebarItem?
     @Binding var selectedArticleID: Article.ID?
-    let keptArticleIDs: Set<Article.ID>
+    @Binding var keptArticleIDs: Set<Article.ID>
 
     var body: some View {
         // Keep articles read in this visit visible in "Unread", so ↑/↓ can go back to them.
@@ -34,13 +34,14 @@ struct ArticleListView: View {
                         .contextMenu { contextMenu(for: article) }
                         #if os(iOS)
                         .swipeActions(edge: .leading) {
-                            Button { store.toggleRead(article.id) } label: {
+                            Button { toggleRead(article) } label: {
                                 Label(article.isRead ? "Unread" : "Read",
                                       systemImage: article.isRead ? "circle" : "checkmark.circle")
                             }
                             .tint(.blue)
                         }
                         .swipeActions(edge: .trailing) {
+                            // UC-005 A1: star or unstar an article of the list.
                             Button { store.toggleStar(article.id) } label: {
                                 Label(article.isStarred ? "Unstar" : "Star",
                                       systemImage: article.isStarred ? "star.slash" : "star")
@@ -63,7 +64,12 @@ struct ArticleListView: View {
         .navigationTitle(title)
         .toolbar {
             ToolbarItemGroup {
-                Button { store.markAllRead(in: sidebarSelection) } label: {
+                // UC-005 A2: mark every unread article of the displayed list as read.
+                Button {
+                    store.markAllRead(in: sidebarSelection)
+                    // UC-005 BR-004: Mark all as read empties Unread, opened articles included (also A3).
+                    if sidebarSelection == .unread { keptArticleIDs = [] }
+                } label: {
                     Label("Mark All as Read", systemImage: "checkmark.circle")
                 }
                 .keyboardShortcut("k")
@@ -101,8 +107,22 @@ struct ArticleListView: View {
         }
     }
 
+    /// UC-005 step 2: toggles the read state of an article of the list.
+    private func toggleRead(_ article: Article) {
+        // UC-005 BR-004: an article marked by hand no longer stays in Unread as a displayed one.
+        keptArticleIDs.remove(article.id)
+        store.toggleRead(article.id)
+    }
+
     private func moveSelection(by offset: Int, in articles: [Article]) -> KeyPress.Result {
         guard !articles.isEmpty else { return .ignored }
+        if let id = selectedArticleID, !articles.contains(where: { $0.id == id }) {
+            // UC-005 BR-006: a displayed article that left the list steps to its former neighbours.
+            if let next = store.neighbour(of: id, offset: offset, in: sidebarSelection, keeping: keptArticleIDs) {
+                selectedArticleID = next
+            }
+            return .handled
+        }
         let current = selectedArticleID.flatMap { id in articles.firstIndex { $0.id == id } }
         let next = current.map { min(max($0 + offset, 0), articles.count - 1) } ?? (offset > 0 ? 0 : articles.count - 1)
         selectedArticleID = articles[next].id
@@ -111,7 +131,9 @@ struct ArticleListView: View {
 
     @ViewBuilder
     private func contextMenu(for article: Article) -> some View {
-        Button(article.isRead ? "Mark as Unread" : "Mark as Read") { store.toggleRead(article.id) }
+        // UC-005 step 1: the Reader chooses an article in the list.
+        Button(article.isRead ? "Mark as Unread" : "Mark as Read") { toggleRead(article) }
+        // UC-005 A1: star or unstar an article of the list.
         Button(article.isStarred ? "Unstar" : "Star") { store.toggleStar(article.id) }
         // UC-004 BR-007: sharing and copying the link only with a link, on every platform.
         if let link = article.link {

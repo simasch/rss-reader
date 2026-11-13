@@ -15,6 +15,8 @@ public final class FeedStore {
 
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    /// A read or starred change is waiting for its save (UC-005 BR-002).
+    @ObservationIgnored private var hasUnsavedChanges = false
     /// An import asked for a refresh while one was running (UC-003 BR-002).
     @ObservationIgnored private var refreshPending = false
     @ObservationIgnored private let refreshInterval: Duration
@@ -38,10 +40,17 @@ public final class FeedStore {
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
+            // UC-005 BR-002: pending read and starred changes are saved when the app quits.
             MainActor.assumeIsolated { self?.save() }
         }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            // UC-005 BR-002: and when it moves to the background: another app becomes active or it is hidden.
+            MainActor.assumeIsolated { if self?.hasUnsavedChanges == true { self?.save() } }
+        }
         #endif
-        // On iOS the app saves when it moves to the background (see App/RSSReaderApp.swift).
+        // On iOS the app saves when it moves to the background (see App/Views/RefreshSchedule.swift).
     }
 
     // MARK: - Queries
@@ -52,13 +61,33 @@ public final class FeedStore {
     public func articles(in selection: SidebarItem?, keeping keep: Set<Article.ID> = []) -> [Article] {
         let filtered: [Article] = switch selection {
         // UC-004 BR-004: articles read during the visit stay in Unread until the list changes.
+        // UC-005 BR-004: a read article not opened by displaying it leaves Unread at once.
         case .unread: articles.filter { !$0.isRead || keep.contains($0.id) }
+        // UC-005 BR-004: an unstarred article leaves Starred at once.
         case .starred: articles.filter(\.isStarred)
         case .feed(let id): articles.filter { $0.feedID == id }
         case .all, nil: articles
         }
         // UC-004 BR-002: newest first by publication date, else by the time first fetched.
         return filtered.sorted { $0.sortDate > $1.sortDate }
+    }
+
+    /// The article `offset` places before (negative) or after (positive) the given one in the list of a
+    /// sidebar item, if any (UC-004 step 6).
+    public func neighbour(
+        of id: Article.ID, offset: Int, in selection: SidebarItem?, keeping keep: Set<Article.ID> = []
+    ) -> Article.ID? {
+        let list = articles(in: selection, keeping: keep)
+        let index: Int
+        if let position = list.firstIndex(where: { $0.id == id }) {
+            index = position + offset
+        } else {
+            // UC-005 BR-006: an article that left the list steps to the articles at its former place.
+            guard offset != 0, let article = article(withID: id) else { return nil }
+            let place = list.firstIndex { $0.sortDate < article.sortDate } ?? list.count
+            index = offset > 0 ? place + offset - 1 : place + offset
+        }
+        return list.indices.contains(index) ? list[index].id : nil
     }
 
     public func article(withID id: Article.ID) -> Article? {
@@ -85,24 +114,31 @@ public final class FeedStore {
         scheduleSave()
     }
 
+    // UC-005 step 3: marks the article as unread if it was read, or as read if it was unread.
     public func toggleRead(_ articleID: Article.ID) {
         guard let article = article(withID: articleID) else { return }
         setRead(!article.isRead, articleID: articleID)
     }
 
+    // UC-005 A1: stars the article if it was not starred, or removes the star if it was.
     public func toggleStar(_ articleID: Article.ID) {
         guard let i = articles.firstIndex(where: { $0.id == articleID }) else { return }
         articles[i].isStarred.toggle()
         scheduleSave()
     }
 
-    public func markAllRead(in selection: SidebarItem?) {
+    /// Marks every unread article of the displayed list as read and returns the articles it marked (UC-005 A2).
+    @discardableResult
+    public func markAllRead(in selection: SidebarItem?) -> Set<Article.ID> {
+        // UC-005 BR-001: Mark all as read affects only the articles of the displayed list.
         let ids = Set(articles(in: selection).filter { !$0.isRead }.map(\.id))
-        guard !ids.isEmpty else { return }
+        // UC-005 A3: a list without unread articles leaves the library unchanged.
+        guard !ids.isEmpty else { return [] }
         for i in articles.indices where ids.contains(articles[i].id) {
             articles[i].isRead = true
         }
         scheduleSave()
+        return ids
     }
 
     // MARK: - Subscriptions
@@ -265,6 +301,7 @@ public final class FeedStore {
     }
 
     // UC-003 BR-008: read, unstarred, fetched over 30 days ago, and gone from its complete feed.
+    // UC-005 BR-003: a starred article never expires.
     private func removeExpiredArticles(ofFeed id: UUID, keeping current: Set<Article.ID>) {
         let cutoff = Date.now.addingTimeInterval(-Self.retention)
         articles.removeAll {
@@ -372,6 +409,7 @@ public final class FeedStore {
         do {
             try persist()
         } catch {
+            // UC-005 A4, BR-002: the changes stay in effect, silently, and go out with the next save.
             print("Failed to save library: \(error)")
         }
     }
@@ -385,10 +423,13 @@ public final class FeedStore {
         )
         let data = try JSONEncoder().encode(Library(feeds: feeds, articles: articles))
         try data.write(to: fileURL, options: .atomic)
+        hasUnsavedChanges = false
     }
 
     /// Coalesces frequent changes (e.g. marking articles read while browsing) into one write.
+    // UC-005 BR-002: read and starred changes are saved at most 2 seconds after the last one.
     private func scheduleSave() {
+        hasUnsavedChanges = true
         saveTask?.cancel()
         saveTask = Task {
             try? await Task.sleep(for: .seconds(2))

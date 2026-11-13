@@ -75,16 +75,18 @@ struct UC001SubscribeToFeedTest {
         defer { Pasteboard.restore(saved) }
 
         #if os(macOS)
-        try await ViewHosting.host(ContentView().environment(store).frame(width: 900, height: 600)) {
-            #expect(AppWindow.sheetTexts() == nil)
+        // A window of its own: the window ViewHosting shares between the suites holds one sheet at a time, and other
+        // suites running meanwhile present sheets there too.
+        try await AppWindow.host(ContentView().environment(store).frame(width: 900, height: 600)) { window in
+            #expect(window.sheetTexts() == nil)
 
             store.isAddingFeed = true
-            let texts = try await AppWindow.waitForSheet()
+            let texts = try await window.waitForSheet()
             // The sheet shows the add-feed form; what the form shows is checked by the tests that inspect it.
             #expect(texts.contains { $0.contains("RSSReaderTests.AddFeedSheet") })
 
             store.isAddingFeed = false
-            try await AppWindow.waitForNoSheet()
+            try await window.waitForNoSheet()
         }
         #else
         // ViewHosting's window on iOS belongs to no window scene: UIKit presents a sheet there but never dismisses
@@ -235,6 +237,35 @@ struct UC001SubscribeToFeedTest {
             #expect(form.store.feeds.map(\.title) == ["Example Blog"])
             #expect(!FeedPublisherStub.receivedRequests.contains { $0.url == atomURL })
             #expect(FeedStore(fileURL: form.libraryURL).feeds.map(\.url) == [feedURL])
+        }
+    }
+
+    @Test("A3, BR-003: only a link advertised as an alternate RSS or Atom version counts; an Atom feed is found, other links before it are skipped")
+    func discoveryCountsOnlyAlternateFeedLinks() async throws {
+        let stylesheet = URL(string: "https://example.com/style.css")!
+        let htmlAlternate = URL(string: "https://example.com/amp")!
+        let atomURL = URL(string: "https://example.com/atom.xml")!
+        // Both links before the Atom link point at addresses that deliver a feed too, so choosing either would succeed.
+        let page = """
+        <!doctype html><html><head><title>Example</title>
+        <link rel="stylesheet" type="application/rss+xml" href="/style.css">
+        <link rel="alternate" type="text/html" href="/amp">
+        <link rel="alternate" type="application/atom+xml" href="/atom.xml">
+        </head><body>Hello</body></html>
+        """
+        try await withForm(answers: [
+            siteURL: .document(page),
+            stylesheet: .document(Documents.rss(title: "Not Advertised as Alternate")),
+            htmlAlternate: .document(Documents.rss(title: "Not a Feed Type")),
+            atomURL: .document(Documents.rss(title: "Atom Feed")),
+        ]) { form in
+            try await form.submit("https://example.com/")
+            try await form.waitUntilClosed()
+
+            #expect(form.store.feeds.map(\.url) == [atomURL])
+            #expect(form.store.feeds.map(\.title) == ["Atom Feed"])
+            #expect(!FeedPublisherStub.receivedRequests.contains { $0.url == stylesheet || $0.url == htmlAlternate })
+            #expect(FeedStore(fileURL: form.libraryURL).feeds.map(\.url) == [atomURL])
         }
     }
 
@@ -763,24 +794,31 @@ private func withForm(
 }
 
 #if os(macOS)
-/// Looks at the window the view is hosted in to see which sheet it presents. SwiftUI exposes no controls or
+/// A window that hosts the view under test on its own, to see which sheet it presents. SwiftUI exposes no controls or
 /// accessibility elements in a test process, so the sheet's content is identified by the SwiftUI view type its
 /// hosting view or controller holds.
 @MainActor
-private enum AppWindow {
-    /// The description of the presented sheet, line by line, or nil when no sheet is presented.
-    static func sheetTexts() -> [String]? {
-        guard let sheet = presentedSheet() else { return nil }
+private struct AppWindow {
+    let window: NSWindow
+
+    /// Shows `view` in a new window for the duration of `body`, then closes the window.
+    static func host<V: View>(_ view: V, _ body: @MainActor (AppWindow) async throws -> Void) async throws {
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        try await body(AppWindow(window: window))
+    }
+
+    /// The description of the sheet this window presents, line by line, or nil when it presents none.
+    func sheetTexts() -> [String]? {
+        guard let sheet = window.attachedSheet?.contentView else { return nil }
         var description = ""
         dump(sheet, to: &description, maxDepth: 12)
         return description.split(separator: "\n").map(String.init)
     }
 
-    private static func presentedSheet() -> Any? {
-        NSApplication.shared.windows.lazy.compactMap(\.attachedSheet).first?.contentView
-    }
-
-    static func waitForSheet() async throws -> [String] {
+    func waitForSheet() async throws -> [String] {
         let deadline = ContinuousClock.now + .seconds(5)
         while ContinuousClock.now < deadline {
             if let texts = sheetTexts(), texts.contains(where: { $0.contains("AddFeedSheet") }) { return texts }
@@ -790,7 +828,7 @@ private enum AppWindow {
         return sheetTexts() ?? []
     }
 
-    static func waitForNoSheet() async throws {
+    func waitForNoSheet() async throws {
         let deadline = ContinuousClock.now + .seconds(5)
         while ContinuousClock.now < deadline {
             if sheetTexts() == nil { return }

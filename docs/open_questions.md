@@ -87,3 +87,37 @@ keep it and widen A3 to step 3.
 **Answer:** (a) — remove the list's "Open in Browser"; the browser opens only from the displayed article and its links.
 **Answered by:** Simon Martinelli, 2026-11-12
 **Resolved in:** UC-004 A3
+
+## OQ-006: Does an explicitly marked article leave Unread when it was displayed before?
+
+**Element:** UC-005 BR-004
+**Raised by:** /use-case-implement, 2026-11-12
+**Blocking:** No
+**Status:** Resolved
+
+BR-004 lets articles opened by displaying them stay in Unread until another list is selected (UC-004 BR-004), but
+an article marked as read leaves Unread at once. It does not say which applies to an article the Reader displayed,
+then marked as unread (BR-005), and then marked as read again by the toggle or Mark all as read. Readings: (a) the
+explicit mark wins and the article leaves Unread at once, even while it is displayed; (b) every article displayed in
+the visit stays in Unread until another list is selected.
+
+**Answer:** (a) — an explicit mark as read, by the toggle or by Mark all as read, removes the article from Unread at
+once; only reading by displaying keeps it there.
+**Answered by:** Simon Martinelli, 2026-11-12
+**Resolved in:** UC-005 BR-004
+
+## OQ-007: Does "moves to the background" apply on the Mac?
+
+**Element:** UC-005 BR-002
+**Raised by:** /use-case-coverage, 2026-11-12
+**Blocking:** No
+**Status:** Resolved
+
+BR-002 saves read and starred changes "at the latest when the app quits or moves to the background" and names no
+platform. iPhone and iPad have a background state; a Mac app keeps running when the Reader switches away. Readings:
+(a) on the Mac, the app moves to the background when another app becomes active or the app is hidden; (b) the
+background clause applies to iPhone and iPad only, and the Mac saves on quit and after 2 seconds.
+
+**Answer:** (a) — on the Mac, pending changes are saved when another app becomes active or the app is hidden.
+**Answered by:** Simon Martinelli, 2026-11-12
+**Resolved in:** UC-005 BR-002

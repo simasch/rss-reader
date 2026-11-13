@@ -19,7 +19,7 @@ struct ContentView: View {
             ArticleListView(
                 sidebarSelection: sidebarSelection,
                 selectedArticleID: $selectedArticleID,
-                keptArticleIDs: keptArticleIDs
+                keptArticleIDs: $keptArticleIDs
             )
             .navigationSplitViewColumnWidth(min: 280, ideal: 360)
         } detail: {
@@ -29,7 +29,9 @@ struct ContentView: View {
                     article: article,
                     previousArticleID: neighbour(of: id, offset: -1),
                     nextArticleID: neighbour(of: id, offset: 1),
-                    select: { selectedArticleID = $0 }
+                    select: { selectedArticleID = $0 },
+                    // UC-005 BR-004: an article marked by hand leaves Unread at once when marked read.
+                    willToggleRead: { keptArticleIDs.remove($0) }
                 )
             } else {
                 ContentUnavailableView("No Article Selected", systemImage: "doc.richtext")
@@ -41,6 +43,7 @@ struct ContentView: View {
             keptArticleIDs = []
         }
         // UC-004 BR-003: displaying an article marks it as read.
+        // UC-005 BR-005: one marked unread while displayed stays unread until displayed anew.
         .onChange(of: selectedArticleID) { _, id in
             guard let id else { return }
             // UC-004 BR-004: the article stays in Unread until another list is selected.
@@ -54,11 +57,9 @@ struct ContentView: View {
     }
 
     /// The article `offset` places before or after the given one in the displayed list, if any.
+    // UC-005 BR-006: also for a displayed article that has left the list.
     private func neighbour(of id: Article.ID, offset: Int) -> Article.ID? {
-        let articles = store.articles(in: sidebarSelection, keeping: keptArticleIDs)
-        guard let index = articles.firstIndex(where: { $0.id == id }),
-              articles.indices.contains(index + offset) else { return nil }
-        return articles[index + offset].id
+        store.neighbour(of: id, offset: offset, in: sidebarSelection, keeping: keptArticleIDs)
     }
 
     /// UC-002 A2: drops the feed's articles from the selection and from the read articles kept in

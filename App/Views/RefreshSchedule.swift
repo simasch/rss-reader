@@ -24,6 +24,7 @@ struct RefreshSchedule: ViewModifier {
                 case .background:
                     // UC-003 BR-001: no refresh runs in the background on iPhone and iPad.
                     store.pauseScheduledRefresh()
+                    // UC-005 BR-002: pending changes are saved when the app moves to the background.
                     // iOS may suspend or kill the app at any time once it leaves the foreground.
                     store.save()
                 default:
