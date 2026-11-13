@@ -121,3 +121,16 @@ background clause applies to iPhone and iPad only, and the Mac saves on quit and
 **Answer:** (a) — on the Mac, pending changes are saved when another app becomes active or the app is hidden.
 **Answered by:** Simon Martinelli, 2026-11-12
 **Resolved in:** UC-005 BR-002
+
+## OQ-008: Which entry is imported when the file lists the same feed address twice?
+
+**Element:** UC-006 BR-002
+**Raised by:** /use-case-spec, 2026-11-13
+**Blocking:** No
+**Status:** Open
+
+An OPML file can hold the same feed address in several entries, for example in two folders, which BR-001 flattens.
+The library allows each feed address only once (`FEED.url` Unique). Readings: (a) the first entry in file order is
+imported and the rest are skipped; (b) the last entry wins; (c) the file is rejected as unreadable (A1).
+
+**Assumed:** (a) — only the first entry with that address is imported, and its title is used.

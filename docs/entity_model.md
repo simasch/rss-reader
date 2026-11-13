@@ -14,7 +14,7 @@ A news feed the Reader is subscribed to, with what the last refresh learned abou
 | Attribute     | Description                                                                                          | Data Type | Length/Precision | Validation Rules         |
 |---------------|------------------------------------------------------------------------------------------------------|-----------|------------------|--------------------------|
 | id            | Unique identifier, a generated UUID of 36 characters                                                 | String    | 36               | Primary Key              |
-| title         | Display title; from the feed (plain text, at most 200 characters) or the import file, else host name | String    | -                | Not Null                 |
+| title         | Display title as plain text; from the feed or the import file, else the host name of the feed address | String    | 200              | Not Null                 |
 | url           | Address the feed is retrieved from                                                                   | String    | -                | Not Null, Unique, Format: URL |
 | site_url      | Address of the website the feed belongs to                                                           | String    | -                | Optional, Format: URL    |
 | etag          | Version tag the Feed Publisher gave the last downloaded version, sent back to skip unchanged feeds   | String    | -                | Optional                 |
